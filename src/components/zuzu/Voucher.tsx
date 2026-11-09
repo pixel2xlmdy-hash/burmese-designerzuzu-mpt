@@ -4,7 +4,7 @@ import { BRAND_SUBTITLE, BRAND_TITLE, PHONE_1, PHONE_2 } from "@/lib/brand";
 import { BODY_FIELDS, computeBalance, formatAmount, parseAmount, type MeasurementData } from "@/lib/tailor";
 import { Logo } from "./Logo";
 
-function Cell({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Cell({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="flex items-baseline justify-between gap-2 border-b border-dotted border-border py-[3px]">
       <span className="truncate text-[11.5px] text-muted-foreground">{label}</span>

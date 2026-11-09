@@ -42,7 +42,7 @@ export function DateField({
           <Calendar
             mode="single"
             selected={selected}
-            defaultMonth={selected}
+            defaultMonth={selected ?? new Date()}
             captionLayout="dropdown"
             startMonth={new Date(2015, 0)}
             endMonth={new Date(2040, 11)}

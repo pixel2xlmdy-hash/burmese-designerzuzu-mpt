@@ -145,7 +145,7 @@ export function MeasurementForm({
                   {f.my} <span className="text-xs text-muted-foreground">({f.en})</span>
                 </Label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Input id="f-elbow" value={data.fields.elbow ?? ""} onChange={(e) => setField("elbow", e.target.value)} className={fieldInput} />
+                  <Input id="f-elbow" value={data.fields["elbow"] ?? ""} onChange={(e) => setField("elbow", e.target.value)} className={fieldInput} />
                   <Input
                     aria-label="လက်အိုး +/- Note"
                     placeholder="+/- Note"

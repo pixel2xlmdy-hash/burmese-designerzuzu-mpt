@@ -43,8 +43,14 @@ export function SettingsSheet({
 
   const send = async () => {
     const e = email.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(e)) return toast.error("Email လိပ်စာ မှန်ကန်စွာ ထည့်ပါ");
-    if (!store.online) return toast.error("အင်တာနက် ချိတ်ဆက်ပြီးမှ Code ပို့ပါ");
+    if (!/^\S+@\S+\.\S+$/.test(e)) {
+      toast.error("Email လိပ်စာ မှန်ကန်စွာ ထည့်ပါ");
+      return;
+    }
+    if (!store.online) {
+      toast.error("အင်တာနက် ချိတ်ဆက်ပြီးမှ Code ပို့ပါ");
+      return;
+    }
     setBusy("send");
     try {
       await sendEmailCode(e);
@@ -59,7 +65,10 @@ export function SettingsSheet({
 
   const verify = async () => {
     const token = code.replace(/\D/g, "");
-    if (token.length < 6) return toast.error("Code ဂဏန်း ၆ လုံး ထည့်ပါ");
+    if (token.length < 6) {
+      toast.error("Code ဂဏန်း ၆ လုံး ထည့်ပါ");
+      return;
+    }
     setBusy("verify");
     try {
       await verifyEmailCode(email.trim().toLowerCase(), token);

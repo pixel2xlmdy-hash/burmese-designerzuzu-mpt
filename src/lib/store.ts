@@ -182,7 +182,9 @@ export async function syncNow(): Promise<void> {
   try {
     // 1) push pending local changes
     const pendingIds = [...state.pending];
-    const toPush = pendingIds.map((id) => state.records[id]).filter(Boolean);
+    const toPush = pendingIds
+      .map((id) => state.records[id])
+      .filter((r): r is TailorRecord => !!r);
     if (toPush.length) {
       const rows = toPush.map((r) => ({
         id: r.id,
