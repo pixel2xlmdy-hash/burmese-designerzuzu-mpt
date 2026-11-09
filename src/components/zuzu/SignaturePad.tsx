@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 import { Eraser } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,12 @@ export function SignaturePad({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const point = (e: PointerEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const start = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const start = (e: PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     const ctx = e.currentTarget.getContext("2d");
     if (!ctx) return;
@@ -57,7 +57,7 @@ export function SignaturePad({
     ctx.stroke();
   };
 
-  const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const move = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current) return;
     const ctx = e.currentTarget.getContext("2d");
     if (!ctx) return;

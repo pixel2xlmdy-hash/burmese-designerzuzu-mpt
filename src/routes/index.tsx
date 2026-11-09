@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { NotebookPen, Plus, Ruler, Search, X } from "lucide-react";
 
@@ -83,7 +83,8 @@ function Index() {
 
   const current = "id" in view && view.id ? store.records[view.id] : undefined;
 
-  let body: React.ReactNode;
+  let body: ReactNode;
+  let isList = false;
   if (view.type === "editMeasurement") {
     body = (
       <MeasurementForm
@@ -111,6 +112,7 @@ function Index() {
       />
     );
   } else {
+    isList = true;
     body = (
       <main className="mx-auto max-w-3xl space-y-4 px-4 pt-3">
         <div className="relative">
@@ -202,8 +204,6 @@ function Index() {
     );
   }
 
-  const isList = view.type === "list" || !body;
-
   return (
     <div className="min-h-screen">
       {splash && <Splash onDone={endSplash} />}
@@ -212,7 +212,7 @@ function Index() {
         {isList && <SocialBar />}
       </div>
       {body}
-      {view.type === "list" && (
+      {isList && (
         <div className="no-print">
           <FooterCards />
         </div>
