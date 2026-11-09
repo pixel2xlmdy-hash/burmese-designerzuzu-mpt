@@ -276,18 +276,20 @@
     margin: 0;
     background: var(--paper) !important;
   }
-  body * {
-    visibility: hidden;
+  .no-print {
+    display: none !important;
   }
-  .print-voucher-container,
-  .print-voucher-container * {
-    visibility: visible;
+  .voucher-frame {
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .voucher-scaler {
+    transform: none !important;
+    width: auto !important;
   }
   .print-voucher-container {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
     width: 100% !important;
     max-width: 190mm !important;
     margin: 0 auto !important;
@@ -296,8 +298,5 @@
     transform: scale(0.92);
     transform-origin: top center;
     box-shadow: none !important;
-  }
-  .no-print {
-    display: none !important;
   }
 }

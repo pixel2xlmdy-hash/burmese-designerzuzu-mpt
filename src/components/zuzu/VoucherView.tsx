@@ -88,7 +88,7 @@ export function VoucherView({
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 pb-12 pt-3">
+    <div className="mx-auto max-w-3xl space-y-4 px-4 pb-12 pt-3 print:p-0">
       <div className="no-print flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
           <ArrowLeft className="!size-5" />
@@ -113,7 +113,7 @@ export function VoucherView({
         </Button>
       </div>
 
-      <div ref={frameRef} className="w-full overflow-hidden rounded-xl shadow-card" style={{ height }}>
+      <div ref={frameRef} className="voucher-frame w-full overflow-hidden rounded-xl shadow-card" style={{ height }}>
         <div
           className="voucher-scaler origin-top-left"
           style={{ transform: `scale(${scale})`, width: DESIGN_WIDTH }}
