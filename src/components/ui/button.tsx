@@ -16,12 +16,23 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        burgundy:
+          "rounded-full bg-burgundy-gradient text-primary-foreground shadow-card hover:brightness-110 active:scale-[0.98]",
+        champagne:
+          "rounded-full bg-champagne-gradient text-accent-foreground border border-gold/50 shadow-soft hover:brightness-105 active:scale-[0.98]",
+        soft: "rounded-full bg-card text-primary border border-border shadow-soft hover:bg-secondary active:scale-[0.98]",
+        call: "rounded-full bg-call text-call-foreground shadow-soft hover:brightness-110",
+        tiktok: "rounded-full bg-tiktok text-tiktok-foreground shadow-soft hover:brightness-125",
+        facebook: "rounded-full bg-facebook text-facebook-foreground shadow-soft hover:brightness-110",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
+        xl: "h-12 px-6 text-base",
+        pill: "h-9 px-4 text-sm",
         icon: "h-9 w-9",
+        "icon-lg": "h-11 w-11 rounded-full",
       },
     },
     defaultVariants: {
