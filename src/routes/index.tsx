@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { NotebookPen, Plus, Ruler, Search, X } from "lucide-react";
+import { NotebookPen, Plus, Ruler, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,14 +116,13 @@ function Index() {
     body = (
       <main className="mx-auto max-w-3xl space-y-4 px-4 pt-3">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="🔍 Customer အမည် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာရန်..."
             aria-label="Search customers"
-            className="h-12 rounded-full border-border bg-card pl-11 pr-10 text-[15px] shadow-soft"
+            className="h-12 rounded-full border-border bg-card pl-5 pr-10 text-[15px] shadow-soft"
           />
           {query && (
             <button
