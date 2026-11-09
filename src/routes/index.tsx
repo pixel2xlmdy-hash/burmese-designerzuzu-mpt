@@ -14,6 +14,7 @@ import { SettingsSheet } from "@/components/zuzu/SettingsSheet";
 import { SocialBar } from "@/components/zuzu/SocialBar";
 import { Splash } from "@/components/zuzu/Splash";
 import { VoucherView } from "@/components/zuzu/VoucherView";
+import { registerOfflineSupport } from "@/lib/pwa-register";
 import { startStore, useStore } from "@/lib/store";
 import { filterRecords, type RecordKind } from "@/lib/tailor";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,10 @@ function Index() {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>({ type: "list" });
 
-  useEffect(() => startStore(), []);
+  useEffect(() => {
+    startStore();
+    registerOfflineSupport();
+  }, []);
   const endSplash = useCallback(() => setSplash(false), []);
 
   const go = (v: View) => {
