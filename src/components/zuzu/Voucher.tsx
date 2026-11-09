@@ -111,8 +111,8 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
         )}
 
         {/* Finance + signatures */}
-        <div className="grid grid-cols-5 gap-3 border-t border-border pt-2.5">
-          <div className="col-span-2 space-y-1 rounded-lg bg-secondary p-2.5 text-[12px]">
+        <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-4 border-t border-border pt-2.5">
+          <div className="space-y-1 rounded-lg bg-secondary p-2.5 text-[12px]">
             <div className="flex justify-between">
               <span>စုစုပေါင်း ကျသင့်ငွေ</span>
               <span className="font-semibold">{formatAmount(parseAmount(data.total))}</span>
@@ -127,7 +127,7 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
             </div>
           </div>
           {(["designerSig", "customerSig"] as const).map((k) => (
-            <div key={k} className="col-span-1 flex flex-col justify-end last:col-span-2 [&:nth-child(2)]:col-span-1">
+            <div key={k} className="flex flex-col justify-end">
               <div className="flex h-[62px] items-end justify-center">
                 {data[k] ? <img src={data[k]} alt="" className="max-h-[62px] max-w-full object-contain" /> : null}
               </div>
