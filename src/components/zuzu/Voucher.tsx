@@ -154,9 +154,10 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
             </div>
           </div>
           {(["designer", "customer"] as const).map((who) => {
-            const typed = data[`${who}SigMode`] === "type";
-            const text = (data[`${who}SigText`] ?? "").trim();
-            const img = data[`${who}Sig`];
+            const d = who === "designer";
+            const typed = (d ? data.designerSigMode : data.customerSigMode) === "type";
+            const text = ((d ? data.designerSigText : data.customerSigText) ?? "").trim();
+            const img = d ? data.designerSig : data.customerSig;
             return (
               <div key={who} className="flex flex-col justify-end">
                 <div className="flex h-[62px] items-end justify-center pb-1">
