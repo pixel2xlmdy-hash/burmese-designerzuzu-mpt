@@ -5,6 +5,8 @@ import {
   filterRecords,
   maskDMY,
   parseDMY,
+  mergeImported,
+  parseBackupRecords,
   pickNewer,
   toDMY,
   type TailorRecord,
@@ -75,5 +77,39 @@ describe("sync merge", () => {
     const newer = rec("1", "New", "", "2026-02-01T00:00:00Z");
     expect(pickNewer(older, newer)).toBe(newer);
     expect(pickNewer(newer, older)).toBe(newer);
+  });
+});
+
+describe("backup import", () => {
+  const now = "2026-11-10T00:00:00.000Z";
+  const r = (id: string, updatedAt: string, deleted = false): TailorRecord => ({
+    id,
+    kind: "measurement",
+    deleted,
+    createdAt: updatedAt,
+    updatedAt,
+    data: { name: id } as never,
+  });
+
+  it("reads full backups, single-customer files and bare arrays", () => {
+    const one = r("a", "2026-01-01T00:00:00Z");
+    expect(parseBackupRecords(JSON.stringify({ records: [one] }))).toHaveLength(1);
+    expect(parseBackupRecords(JSON.stringify([one, { bad: true }]))).toHaveLength(1);
+    expect(() => parseBackupRecords("not json")).toThrow();
+  });
+
+  it("adds a customer that is not on this phone", () => {
+    const inc = r("a", "2026-01-01T00:00:00Z");
+    expect(mergeImported(undefined, inc, now)).toBe(inc);
+  });
+
+  it("keeps a newer local copy instead of overwriting it", () => {
+    expect(mergeImported(r("a", "2026-05-01T00:00:00Z"), r("a", "2026-01-01T00:00:00Z"), now)).toBeNull();
+  });
+
+  it("restores a customer that was deleted on this phone", () => {
+    const out = mergeImported(r("a", "2026-05-01T00:00:00Z", true), r("a", "2026-01-01T00:00:00Z"), now);
+    expect(out?.deleted).toBe(false);
+    expect(out?.updatedAt).toBe(now);
   });
 });

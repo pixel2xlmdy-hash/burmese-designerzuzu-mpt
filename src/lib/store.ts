@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
-import { pickNewer, type TailorRecord } from "./tailor";
+import { mergeImported, parseBackupRecords, pickNewer, type TailorRecord } from "./tailor";
 
 const RECORDS_KEY = "zuzu.records.v1";
 const PENDING_KEY = "zuzu.pending.v1";
@@ -101,34 +101,36 @@ export function deleteRecord(id: string) {
   writeLocal([{ ...r, deleted: true, updatedAt: new Date().toISOString() }]);
 }
 
-export function exportBackup(): string {
-  const records = Object.values(state.records).filter((r) => !r.deleted);
+/** Builds a backup file. Pass one record for a single-customer file; omit for the whole shop. */
+export function exportBackup(only?: TailorRecord[]): string {
+  const records = (only ?? Object.values(state.records)).filter((r) => !r.deleted);
   return JSON.stringify(
-    { app: "myauk-pyin-thu", version: 1, exportedAt: new Date().toISOString(), records },
+    {
+      app: "myauk-pyin-thu",
+      version: 2,
+      scope: only ? "single" : "all",
+      exportedAt: new Date().toISOString(),
+      records,
+    },
     null,
     2,
   );
 }
 
-/** Imports a JSON backup; newer copies win. Returns how many records were added/updated. */
-export function importBackup(json: string): number {
-  const parsed = JSON.parse(json) as { records?: TailorRecord[] } | TailorRecord[];
-  const list = Array.isArray(parsed) ? parsed : (parsed.records ?? []);
-  const valid = list.filter(
-    (r) => r && typeof r.id === "string" && (r.kind === "measurement" || r.kind === "note") && r.data,
-  );
+/**
+ * Imports a backup file and merges it in without removing anyone else.
+ * Returns how many customer records the file held and how many changed on this phone.
+ */
+export function importBackup(json: string): { found: number; changed: number } {
+  const list = parseBackupRecords(json);
+  const now = new Date().toISOString();
   const changed: TailorRecord[] = [];
-  for (const r of valid) {
-    const merged = pickNewer(state.records[r.id], {
-      ...r,
-      deleted: !!r.deleted,
-      createdAt: r.createdAt ?? new Date().toISOString(),
-      updatedAt: r.updatedAt ?? new Date().toISOString(),
-    });
-    if (merged !== state.records[r.id]) changed.push(merged);
+  for (const r of list) {
+    const next = mergeImported(state.records[r.id], r, now);
+    if (next) changed.push(next);
   }
   if (changed.length) writeLocal(changed);
-  return changed.length;
+  return { found: list.filter((r) => !r.deleted).length, changed: changed.length };
 }
 
 /* ---------- cloud sync ---------- */
@@ -257,14 +259,14 @@ function unsubscribeRealtime() {
   }
 }
 
-function onSignedIn(userId: string, email: string | null) {
+function onSignedIn(userId: string, email: string | null): Promise<void> {
   const firstForThisUser = state.userId !== userId;
   // Upload everything already on this device the first time an account connects.
   const pending = firstForThisUser ? Object.keys(state.records) : state.pending;
   setState({ userId, email, pending });
   persist();
   subscribeRealtime(userId);
-  void syncNow();
+  return syncNow();
 }
 
 /* ---------- lifecycle ---------- */
@@ -301,14 +303,14 @@ export function startStore() {
 
   void supabase.auth.getSession().then(({ data }) => {
     const u = data.session?.user;
-    if (u) onSignedIn(u.id, u.email ?? null);
+    if (u) void onSignedIn(u.id, u.email ?? null);
   });
 
   supabase.auth.onAuthStateChange((event, session) => {
     // Defer: never await other Supabase calls inside this callback.
     setTimeout(() => {
       if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user) {
-        if (state.userId !== session.user.id) onSignedIn(session.user.id, session.user.email ?? null);
+        if (state.userId !== session.user.id) void onSignedIn(session.user.id, session.user.email ?? null);
       } else if (event === "SIGNED_OUT") {
         unsubscribeRealtime();
         setState({ userId: null, email: null, error: null });
@@ -317,19 +319,26 @@ export function startStore() {
   });
 }
 
+/** Emails a numeric one-time code (the email template decides what the message shows). */
 export async function sendEmailCode(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
+    options: { shouldCreateUser: true },
   });
   if (error) throw error;
 }
 
-export async function verifyEmailCode(email: string, token: string) {
+/** Verifies the emailed code, then pulls every customer saved under this email. Returns the live record count. */
+export async function verifyEmailCode(email: string, token: string): Promise<number> {
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) throw error;
   const u = data.user ?? data.session?.user;
-  if (u) onSignedIn(u.id, u.email ?? email);
+  if (!u) throw new Error("Verification failed");
+  await onSignedIn(u.id, u.email ?? email);
+  // If another sync was already running, wait for it to settle before counting.
+  for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 250));
+  if (state.error) throw new Error(state.error);
+  return Object.values(state.records).filter((r) => !r.deleted).length;
 }
 
 export async function disconnectCloud() {

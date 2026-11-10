@@ -2,8 +2,11 @@ import { useEffect, useRef, type PointerEvent } from "react";
 import { Eraser } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { SigMode } from "@/lib/tailor";
+import { cn } from "@/lib/utils";
 
-export function SignaturePad({
+function Canvas({
   label,
   value,
   onChange,
@@ -14,7 +17,6 @@ export function SignaturePad({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
-  const dirty = useRef(false);
 
   // Size the canvas to its box once, then paint any saved signature.
   useEffect(() => {
@@ -64,7 +66,6 @@ export function SignaturePad({
     const p = point(e);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
-    dirty.current = true;
   };
 
   const end = () => {
@@ -85,13 +86,7 @@ export function SignaturePad({
   };
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
-        <Button type="button" variant="ghost" size="sm" onClick={clear}>
-          <Eraser /> ဖျက်ရန်
-        </Button>
-      </div>
+    <div className="relative">
       <canvas
         ref={canvasRef}
         onPointerDown={start}
@@ -102,6 +97,77 @@ export function SignaturePad({
         className="h-32 w-full touch-none rounded-xl border border-dashed border-gold/60 bg-paper text-ink"
         aria-label={label}
       />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={clear}
+        className="absolute right-1 top-1 h-7 bg-card/80 px-2 text-xs"
+      >
+        <Eraser /> ပြန်ဖျက်
+      </Button>
+    </div>
+  );
+}
+
+const MODES: { k: SigMode; label: string }[] = [
+  { k: "draw", label: "✍️ လက်မှတ်ထိုးမည်" },
+  { k: "type", label: "⌨️ နာမည်ရိုက်မည်" },
+];
+
+/** Signature box with two ways to sign: draw on the canvas, or type a name. */
+export function SignaturePad({
+  label,
+  value,
+  onChange,
+  mode,
+  onModeChange,
+  text,
+  onTextChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (dataUrl: string) => void;
+  mode: SigMode;
+  onModeChange: (m: SigMode) => void;
+  text: string;
+  onTextChange: (t: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium">{label}</span>
+        <div role="radiogroup" aria-label={`${label} mode`} className="flex rounded-full bg-secondary p-0.5">
+          {MODES.map(({ k, label: l }) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={mode === k}
+              onClick={() => onModeChange(k)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11.5px] leading-none transition",
+                mode === k ? "bg-card font-semibold text-primary shadow-soft" : "text-muted-foreground",
+              )}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+      {mode === "draw" ? (
+        <Canvas label={label} value={value} onChange={onChange} />
+      ) : (
+        <Input
+          aria-label={`${label} နာမည်`}
+          value={text}
+          placeholder={placeholder}
+          onChange={(e) => onTextChange(e.target.value)}
+          className="h-32 rounded-xl border-dashed border-gold/60 bg-paper text-center font-display text-xl text-ink"
+        />
+      )}
     </div>
   );
 }

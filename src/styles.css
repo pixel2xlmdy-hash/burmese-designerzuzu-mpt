@@ -289,6 +289,10 @@
     transform: none !important;
     width: auto !important;
   }
+  .voucher-card {
+    width: 100% !important;
+    max-width: 190mm !important;
+  }
   .print-voucher-container {
     width: 100% !important;
     max-width: 190mm !important;
