@@ -196,8 +196,26 @@ export function MeasurementForm({
 
       <Section title="လက်မှတ်များ">
         <div className="grid gap-4 sm:grid-cols-2">
-          <SignaturePad label="Designer လက်မှတ်" value={data.designerSig} onChange={(v) => set("designerSig", v)} />
-          <SignaturePad label="Customer လက်မှတ်" value={data.customerSig} onChange={(v) => set("customerSig", v)} />
+          <SignaturePad
+            label="Designer လက်မှတ်"
+            value={data.designerSig}
+            onChange={(v) => set("designerSig", v)}
+            mode={data.designerSigMode ?? "draw"}
+            onModeChange={(m) => set("designerSigMode", m)}
+            text={data.designerSigText ?? ""}
+            onTextChange={(t) => set("designerSigText", t)}
+            placeholder="Designer Zu Zu"
+          />
+          <SignaturePad
+            label="Customer လက်မှတ်"
+            value={data.customerSig}
+            onChange={(v) => set("customerSig", v)}
+            mode={data.customerSigMode ?? "draw"}
+            onModeChange={(m) => set("customerSigMode", m)}
+            text={data.customerSigText ?? ""}
+            onTextChange={(t) => set("customerSigText", t)}
+            placeholder="ဒေါ်မိုးမိုး"
+          />
         </div>
       </Section>
 
