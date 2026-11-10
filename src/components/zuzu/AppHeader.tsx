@@ -10,7 +10,7 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
   const status = !store.online
     ? { label: "Offline", dot: "bg-offline" }
     : store.userId
-      ? { label: store.syncing ? "Syncing…" : "Cloud", dot: "bg-online" }
+      ? { label: store.syncing ? "Syncing…" : "Cloud Sync Active", dot: "bg-online", active: !store.syncing }
       : { label: "Local", dot: "bg-muted-foreground/50" };
 
   return (
@@ -23,7 +23,12 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
             {BRAND_SUBTITLE}
           </p>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] text-muted-foreground shadow-soft">
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] shadow-soft",
+            "active" in status && status.active ? "bg-event font-semibold text-event-foreground" : "bg-card text-muted-foreground",
+          )}
+        >
           <span className={cn("h-2 w-2 rounded-full", status.dot, store.syncing && "animate-pulse")} />
           {status.label}
         </span>

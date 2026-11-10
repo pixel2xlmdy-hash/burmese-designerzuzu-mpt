@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CloudUpload, Download, Loader2, LogOut, Mail, RefreshCw, ShieldCheck, Upload } from "lucide-react";
+import { CloudUpload, Download, Loader2, LogOut, Mail, RefreshCw, ShieldCheck, Upload, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   verifyEmailCode,
   type StoreState,
 } from "@/lib/store";
-import { toDMY } from "@/lib/tailor";
+import { downloadJson, todayForFile } from "@/lib/download";
 
 function errorText(e: unknown) {
   const msg = e instanceof Error ? e.message : String(e);
@@ -38,6 +38,7 @@ export function SettingsSheet({
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState<"send" | "verify" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const singleRef = useRef<HTMLInputElement>(null);
 
   const liveCount = Object.values(store.records).filter((r) => !r.deleted).length;
 
@@ -71,10 +72,10 @@ export function SettingsSheet({
     }
     setBusy("verify");
     try {
-      await verifyEmailCode(email.trim().toLowerCase(), token);
+      const n = await verifyEmailCode(email.trim().toLowerCase(), token);
       setCode("");
       setSent(false);
-      toast.success("Cloud Sync ချိတ်ဆက်ပြီးပါပြီ");
+      toast.success(`Cloud Sync ချိတ်ဆက်ပြီးပါပြီ — မှတ်တမ်း ${n} ခု`);
     } catch (err) {
       toast.error(errorText(err));
     } finally {
@@ -83,25 +84,40 @@ export function SettingsSheet({
   };
 
   const doExport = () => {
-    const blob = new Blob([exportBackup()], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `မြောက်ပြင်သူ-backup-${toDMY(new Date()).replace(/\//g, "-")}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadJson(exportBackup(), `မြောက်ပြင်သူ-All-Backup-${todayForFile()}.json`);
+    toast.success(`Customer မှတ်တမ်း ${liveCount} ခု သိမ်းပြီးပါပြီ`);
   };
 
-  const doImport = async (file: File) => {
+  const doImport = async (file: File, single: boolean) => {
     try {
-      const n = importBackup(await file.text());
-      toast.success(`မှတ်တမ်း ${n} ခု ထည့်သွင်းပြီးပါပြီ`);
+      const { found } = importBackup(await file.text());
+      if (found === 0) {
+        toast.error("ဤဖိုင်ထဲတွင် Customer မှတ်တမ်း မတွေ့ပါ");
+        return;
+      }
+      toast.success(
+        single
+          ? `Customer မှတ်တမ်း (${found}) ခု ထည့်သွင်းပြီးပါပြီ။ အခြား Customer များ မပျက်ပါ။`
+          : `Customer မှတ်တမ်းအားလုံး (${found}) ခု အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။`,
+      );
     } catch {
       toast.error("Backup ဖိုင် မမှန်ကန်ပါ");
     }
   };
+
+  const fileInput = (ref: typeof fileRef, single: boolean) => (
+    <input
+      ref={ref}
+      type="file"
+      accept="application/json,.json"
+      className="hidden"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) void doImport(f, single);
+        e.target.value = "";
+      }}
+    />
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -195,7 +211,7 @@ export function SettingsSheet({
                     Verify & Connect
                   </Button>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Email ထဲတွင် Code မတွေ့ပါက Spam ကို စစ်ပါ။ Email ထဲရှိ Link ကို ဤဖုန်းမှ နှိပ်၍လည်း ချိတ်ဆက်နိုင်ပါသည်။
+                    Email ထဲတွင် Code မတွေ့ပါက Spam ကို စစ်ပါ။ Email ထဲရှိ ဂဏန်း Code ကို ဤနေရာတွင် ရိုက်ထည့်ပါ။
                   </p>
                 </div>
               )}
@@ -207,26 +223,32 @@ export function SettingsSheet({
         </section>
 
         <section className="mt-4 space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
-          <h3 className="font-display text-base font-bold text-primary">Backup (JSON)</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="soft" onClick={doExport}>
-              <Download /> Export Backup
+          <h3 className="font-display text-base font-bold text-primary">Data Backup</h3>
+          <div className="grid gap-2">
+            <Button variant="soft" size="xl" className="h-auto justify-start whitespace-normal py-3 text-left leading-snug" onClick={doExport}>
+              <Download /> 📥 Export All Customers (ဆိုင်ရှိ Customer အားလုံး သိမ်းမည်)
             </Button>
-            <Button variant="soft" onClick={() => fileRef.current?.click()}>
-              <Upload /> Import Backup
+            <Button
+              variant="soft"
+              size="xl"
+              className="h-auto justify-start whitespace-normal py-3 text-left leading-snug"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload /> 📤 Import All Customers (Customer အားလုံး ပြန်သွင်းမည်)
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-auto justify-start whitespace-normal border border-dashed border-gold/50 py-2.5 text-left leading-snug"
+              onClick={() => singleRef.current?.click()}
+            >
+              <UserPlus /> Customer တစ်ယောက်ချင်း ဖိုင် ပြန်သွင်းမည် (Import One Customer)
             </Button>
           </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void doImport(f);
-              e.target.value = "";
-            }}
-          />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            ပြန်သွင်းသည့်အခါ ရှိပြီးသား Customer များကို မဖျက်ပါ။ Customer တစ်ယောက်ချင်း ဖိုင်ကို ဘောင်ချာ စာမျက်နှာမှ ထုတ်နိုင်ပါသည်။
+          </p>
+          {fileInput(fileRef, false)}
+          {fileInput(singleRef, true)}
         </section>
       </SheetContent>
     </Sheet>

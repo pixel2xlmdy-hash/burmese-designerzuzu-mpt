@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Loader2, Pencil, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, FileDown, FileText, Loader2, Pencil, Printer, SlidersHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { BRAND_TITLE } from "@/lib/brand";
-import { deleteRecord } from "@/lib/store";
-import { safeFilePart, toDMY, type MeasurementData, type TailorRecord } from "@/lib/tailor";
+import { downloadJson, saveImage, todayForFile } from "@/lib/download";
+import { deleteRecord, exportBackup, saveRecord } from "@/lib/store";
+import { safeFilePart, type MeasurementData, type TailorRecord } from "@/lib/tailor";
 import { Voucher } from "./Voucher";
+import { VoucherCustomizeDialog } from "./VoucherCustomizeDialog";
 
 const DESIGN_WIDTH = 760;
 
@@ -36,6 +38,9 @@ export function VoucherView({
   const [height, setHeight] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [customize, setCustomize] = useState(false);
+
+  const fileBase = `${safeFilePart(data.voucher?.title?.trim() || BRAND_TITLE)}-${safeFilePart(data.name)}`;
 
   // Scale the fixed-width voucher down to fit phone screens.
   useLayoutEffect(() => {
@@ -57,27 +62,27 @@ export function VoucherView({
     if (!node) return;
     setSaving(true);
     try {
-      const { toPng } = await import("html-to-image");
+      const { toBlob } = await import("html-to-image");
       await document.fonts.ready;
+      // Capture at the voucher's real (unscaled) size so the picture has no gaps or cut-offs.
+      const rect = { width: node.offsetWidth, height: node.scrollHeight };
       const opts = {
         pixelRatio: 2,
-        width: node.offsetWidth,
-        height: node.offsetHeight,
+        width: rect.width,
+        height: rect.height,
+        canvasWidth: rect.width,
+        canvasHeight: rect.height,
         backgroundColor: getComputedStyle(node).backgroundColor,
+        style: { transform: "none", margin: "0" },
       };
-      let url: string;
+      let blob: Blob | null;
       try {
-        url = await toPng(node, opts);
+        blob = await toBlob(node, opts);
       } catch {
-        url = await toPng(node, { ...opts, skipFonts: true });
+        blob = await toBlob(node, { ...opts, skipFonts: true });
       }
-      const date = (data.date || toDMY(new Date())).replace(/\//g, "-");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${BRAND_TITLE}-${safeFilePart(data.name)}-${date}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      if (!blob) throw new Error("empty image");
+      await saveImage(blob, `${fileBase}.png`);
       toast.success("ဓာတ်ပုံ သိမ်းပြီးပါပြီ");
     } catch (e) {
       console.error(e);
@@ -85,6 +90,19 @@ export function VoucherView({
     } finally {
       setSaving(false);
     }
+  };
+
+  const print = () => {
+    // The PDF's default file name comes from the page title.
+    const prev = document.title;
+    document.title = fileBase;
+    window.print();
+    setTimeout(() => (document.title = prev), 1000);
+  };
+
+  const exportThis = () => {
+    downloadJson(exportBackup([record]), `${fileBase}-${todayForFile()}.json`);
+    toast.success(`${data.name || "Customer"} ၏ မှတ်တမ်းကို သိမ်းပြီးပါပြီ`);
   };
 
   return (
@@ -98,19 +116,37 @@ export function VoucherView({
         </h2>
       </div>
 
-      <div className="no-print grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Button variant="burgundy" size="xl" onClick={savePhoto} disabled={saving} className="col-span-2 sm:col-span-1">
-          {saving ? <Loader2 className="animate-spin" /> : <Camera />} 📸 Save as Photo
+      <div className="no-print space-y-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <Button variant="burgundy" size="xl" onClick={savePhoto} disabled={saving} className="col-span-2 sm:col-span-1">
+            {saving ? <Loader2 className="animate-spin" /> : <Camera />} 📸 Save as Photo
+          </Button>
+          <Button variant="champagne" size="xl" onClick={print}>
+            <FileText /> 📄 Save as PDF
+          </Button>
+          <Button variant="champagne" size="xl" onClick={print}>
+            <Printer /> 🖨️ Print A4
+          </Button>
+        </div>
+        <Button variant="soft" size="xl" className="w-full whitespace-normal leading-tight" onClick={() => setCustomize(true)}>
+          <SlidersHorizontal /> ✏️ ဘောင်ချာ အချက်အလက် ပြင်ဆင်ရန် (Customize Voucher Header)
         </Button>
-        <Button variant="champagne" size="xl" onClick={() => window.print()}>
-          <Printer /> Print A4
-        </Button>
-        <Button variant="soft" size="xl" onClick={onEdit}>
-          <Pencil /> ပြင်မည်
-        </Button>
-        <Button variant="soft" size="xl" className="col-span-2 text-destructive sm:col-span-1" onClick={() => setConfirm(true)}>
-          <Trash2 /> ဖျက်မည်
-        </Button>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <Button variant="soft" size="xl" onClick={onEdit}>
+            <Pencil /> ပြင်မည်
+          </Button>
+          <Button variant="soft" size="xl" className="text-destructive" onClick={() => setConfirm(true)}>
+            <Trash2 /> ဖျက်မည်
+          </Button>
+          <Button
+            variant="ghost"
+            size="xl"
+            className="col-span-2 whitespace-normal border border-dashed border-gold/50 leading-tight sm:col-span-1"
+            onClick={exportThis}
+          >
+            <FileDown /> 📤 Export This Customer (ဒီတစ်ယောက်တည်း သိမ်းမည်)
+          </Button>
+        </div>
       </div>
 
       <div ref={frameRef} className="voucher-frame w-full overflow-hidden rounded-xl shadow-card" style={{ height }}>
@@ -121,6 +157,13 @@ export function VoucherView({
           <Voucher ref={voucherRef} data={data} />
         </div>
       </div>
+
+      <VoucherCustomizeDialog
+        open={customize}
+        onOpenChange={setCustomize}
+        value={data.voucher}
+        onSave={(voucher) => saveRecord({ ...record, data: { ...data, voucher } })}
+      />
 
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>
