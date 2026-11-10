@@ -18,6 +18,22 @@ export interface MeasurementData {
   deposit: string;
   designerSig: string; // data URL
   customerSig: string;
+  /** "draw" = canvas signature, "type" = typed name. Missing means "draw" (older records). */
+  designerSigMode?: SigMode;
+  customerSigMode?: SigMode;
+  designerSigText?: string;
+  customerSigText?: string;
+  /** Per-voucher header/footer overrides; empty values fall back to the shop defaults. */
+  voucher?: Partial<VoucherCustom>;
+}
+
+export type SigMode = "draw" | "type";
+
+export interface VoucherCustom {
+  title: string;
+  logo: string; // URL or data URL
+  contact: string;
+  footer: string;
 }
 
 export interface NoteData {
@@ -74,6 +90,11 @@ export function emptyMeasurement(today: string): MeasurementData {
     deposit: "",
     designerSig: "",
     customerSig: "",
+    designerSigMode: "draw",
+    customerSigMode: "draw",
+    designerSigText: "",
+    customerSigText: "",
+    voucher: {},
   };
 }
 
@@ -168,6 +189,47 @@ export function filterRecords(records: TailorRecord[], query: string): TailorRec
 export function pickNewer(local: TailorRecord | undefined, incoming: TailorRecord): TailorRecord {
   if (!local) return incoming;
   return Date.parse(incoming.updatedAt) > Date.parse(local.updatedAt) ? incoming : local;
+}
+
+/* ---------- backup import ---------- */
+
+/** Reads a backup file (full shop backup, single-customer file, or a bare array). Throws on bad JSON. */
+export function parseBackupRecords(json: string): TailorRecord[] {
+  const parsed = JSON.parse(json) as { records?: unknown } | unknown[];
+  const list = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as { records?: unknown }).records)
+      ? ((parsed as { records: unknown[] }).records)
+      : [];
+  const now = new Date().toISOString();
+  return (list as Partial<TailorRecord>[])
+    .filter(
+      (r) => !!r && typeof r.id === "string" && (r.kind === "measurement" || r.kind === "note") && !!r.data,
+    )
+    .map((r) => ({
+      id: r.id!,
+      kind: r.kind!,
+      data: r.data!,
+      deleted: !!r.deleted,
+      createdAt: r.createdAt ?? now,
+      updatedAt: r.updatedAt ?? now,
+    }));
+}
+
+/**
+ * Decides what an imported record does to the local copy. Returns the record to save, or null for no change.
+ * Never touches other customers; a newer local copy wins; a locally deleted customer is restored.
+ */
+export function mergeImported(
+  local: TailorRecord | undefined,
+  incoming: TailorRecord,
+  now: string,
+): TailorRecord | null {
+  if (incoming.deleted) return null;
+  if (!local) return incoming;
+  if (local.deleted) return { ...incoming, deleted: false, updatedAt: now };
+  const picked = pickNewer(local, incoming);
+  return picked === local ? null : picked;
 }
 
 export function safeFilePart(value: string): string {
