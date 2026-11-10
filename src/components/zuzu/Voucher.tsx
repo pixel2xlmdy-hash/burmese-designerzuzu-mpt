@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 import { BRAND_SUBTITLE, BRAND_TITLE, PHONE_1, PHONE_2 } from "@/lib/brand";
 import { BODY_FIELDS, computeBalance, formatAmount, parseAmount, type MeasurementData } from "@/lib/tailor";
@@ -31,29 +31,56 @@ function Slots({ label, values }: { label: string; values: string[] }) {
   );
 }
 
+export const DEFAULT_VOUCHER_CONTACT = `📞 ${PHONE_1}\n📞 ${PHONE_2}`;
+export const DEFAULT_VOUCHER_FOOTER = "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။";
+
+const isBurmese = (t: string) => /[\u1000-\u109F]/.test(t);
+
+function VoucherLogo({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) return <Logo className="h-16 w-16" />;
+  return (
+    <img
+      src={src}
+      alt=""
+      crossOrigin={src.startsWith("data:") ? undefined : "anonymous"}
+      onError={() => setFailed(true)}
+      className="h-16 w-16 rounded-full bg-card object-cover"
+      draggable={false}
+    />
+  );
+}
+
 /** Compact A4 voucher. Fixed 760px design width; printing and photo export use this node. */
 export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(function Voucher(
   { data },
   ref,
 ) {
   const balance = computeBalance(data.total, data.deposit);
+  const v = data.voucher ?? {};
+  const title = v.title?.trim() || BRAND_TITLE;
+  const customTitle = !!v.title?.trim() && v.title.trim() !== BRAND_TITLE;
+  const contact = v.contact?.trim() || DEFAULT_VOUCHER_CONTACT;
+  const footer = v.footer?.trim() || DEFAULT_VOUCHER_FOOTER;
   return (
     <div
       ref={ref}
-      className="print-voucher-container w-[760px] bg-paper p-6 text-ink"
+      className="print-voucher-container voucher-card w-[760px] bg-paper p-6 text-ink"
       style={{ lineHeight: 1.45 }}
     >
       <div className="rounded-xl border-2 border-gold/70 p-4">
         {/* Header */}
         <div className="flex items-center gap-3 border-b-2 border-primary/80 pb-3">
-          <Logo className="h-16 w-16" />
+          <VoucherLogo src={v.logo?.trim() ?? ""} />
           <div className="flex-1">
-            <div className="font-display text-[26px] font-bold leading-tight text-primary">{BRAND_TITLE}</div>
-            <div className="font-script text-[17px] italic leading-none text-gold">{BRAND_SUBTITLE}</div>
+            <div className="font-display text-[26px] font-bold leading-tight text-primary">{title}</div>
+            {!customTitle && (
+              <div className="font-script text-[17px] italic leading-none text-gold">{BRAND_SUBTITLE}</div>
+            )}
           </div>
           <div className="text-right text-[11.5px] leading-relaxed text-muted-foreground">
-            <div>📞 {PHONE_1}</div>
-            <div>📞 {PHONE_2}</div>
+            <div className="whitespace-pre-line">{contact}</div>
             <div className="mt-0.5 font-semibold text-primary">ကိုယ်တိုင်း မှတ်တမ်း</div>
           </div>
         </div>
@@ -126,21 +153,38 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
               <span>{formatAmount(balance)} ကျပ်</span>
             </div>
           </div>
-          {(["designerSig", "customerSig"] as const).map((k) => (
-            <div key={k} className="flex flex-col justify-end">
-              <div className="flex h-[62px] items-end justify-center">
-                {data[k] ? <img src={data[k]} alt="" className="max-h-[62px] max-w-full object-contain" /> : null}
+          {(["designer", "customer"] as const).map((who) => {
+            const typed = data[`${who}SigMode`] === "type";
+            const text = (data[`${who}SigText`] ?? "").trim();
+            const img = data[`${who}Sig`];
+            return (
+              <div key={who} className="flex flex-col justify-end">
+                <div className="flex h-[62px] items-end justify-center pb-1">
+                  {typed ? (
+                    text ? (
+                      <span
+                        className={
+                          isBurmese(text)
+                            ? "font-display text-[19px] font-semibold leading-tight text-ink"
+                            : "font-script text-[26px] italic leading-none text-ink"
+                        }
+                      >
+                        {text}
+                      </span>
+                    ) : null
+                  ) : img ? (
+                    <img src={img} alt="" className="max-h-[62px] max-w-full object-contain" />
+                  ) : null}
+                </div>
+                <div className="border-t border-ink/60 pt-0.5 text-center text-[11px] text-muted-foreground">
+                  {who === "designer" ? "Designer လက်မှတ်" : "Customer လက်မှတ်"}
+                </div>
               </div>
-              <div className="border-t border-ink/60 pt-0.5 text-center text-[11px] text-muted-foreground">
-                {k === "designerSig" ? "Designer လက်မှတ်" : "Customer လက်မှတ်"}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="mt-2.5 text-center text-[10.5px] text-muted-foreground">
-          👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။
-        </div>
+        <div className="mt-2.5 whitespace-pre-line text-center text-[10.5px] text-muted-foreground">{footer}</div>
       </div>
     </div>
   );
