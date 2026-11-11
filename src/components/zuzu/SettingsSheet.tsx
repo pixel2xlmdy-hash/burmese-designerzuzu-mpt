@@ -1,19 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  CloudUpload,
-  Download,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Loader2,
-  LogIn,
-  LogOut,
-  Mail,
-  RefreshCw,
-  ShieldCheck,
-  Upload,
-  UserPlus,
-} from "lucide-react";
+import { useRef, useState } from "react";
+import { CloudUpload, Download, Loader2, LogOut, Mail, RefreshCw, ShieldCheck, Upload, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -24,43 +10,19 @@ import {
   disconnectCloud,
   exportBackup,
   importBackup,
-  passwordSignIn,
-  passwordSignUp,
-  readOtpGate,
   sendEmailCode,
-  setAccountPassword,
   syncNow,
   verifyEmailCode,
   type StoreState,
 } from "@/lib/store";
-import {
-  accountLabel,
-  loginIdentity,
-  MIN_PASSWORD,
-  OTP_LENGTH,
-  OTP_MAX_ATTEMPTS,
-  otpLockRemaining,
-  type OtpGate,
-} from "@/lib/auth-helpers";
-import { cn } from "@/lib/utils";
 import { downloadJson, todayForFile } from "@/lib/download";
 
 function errorText(e: unknown) {
   const msg = e instanceof Error ? e.message : String(e);
-  if (/otp locked/i.test(msg)) return "Code အကြိမ်များစွာ မှားသွားပါသဖြင့် ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ။";
-  if (/invalid identity/i.test(msg)) return "Email သို့မဟုတ် ဖုန်းနံပါတ် မှန်ကန်စွာ ထည့်ပါ";
-  if (/invalid login credentials/i.test(msg)) return "Email/ဖုန်း သို့မဟုတ် Password မှားနေပါသည်";
-  if (/already registered|already exists/i.test(msg)) return "ဤ Email/ဖုန်းဖြင့် အကောင့် ရှိပြီးသားပါ — “ဝင်မည်” ကို နှိပ်ပါ";
-  if (/email not confirmed/i.test(msg)) return "Email ကို အတည်ပြုရန် လိုပါသေးသည် — 6-Digit Code ဖြင့် ဝင်ပါ";
-  if (/weak|pwned|known to be|easy to guess/i.test(msg)) return "ဤ Password သည် လွယ်လွန်းပါသည်။ ပိုခက်သော Password ရွေးပါ။";
-  if (/password should be|at least 6/i.test(msg)) return "Password အနည်းဆုံး ၆ လုံး ထည့်ပါ";
-  if (/rate limit|security purposes|too many/i.test(msg)) return "ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ။";
-  if (/expired|invalid|token/i.test(msg)) return "Code မှားနေသည် သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။";
-  if (/failed to fetch|network/i.test(msg)) return "အင်တာနက် ချိတ်ဆက်မှု မရှိပါ";
+  if (/rate limit|security purposes/i.test(msg)) return "ခဏစောင့်ပြီးမှ Code ထပ်ပို့ပါ။";
+  if (/expired|invalid/i.test(msg)) return "Code မှားနေသည် သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။";
   return msg;
 }
-
-type Method = "password" | "code";
 
 export function SettingsSheet({
   open,
@@ -71,62 +33,14 @@ export function SettingsSheet({
   onOpenChange: (v: boolean) => void;
   store: StoreState;
 }) {
-  const [method, setMethod] = useState<Method>("password");
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState<"signin" | "signup" | "send" | "verify" | "setpw" | null>(null);
-  const [lockLeft, setLockLeft] = useState(0);
-  const [newPw, setNewPw] = useState("");
-  const [showSetPw, setShowSetPw] = useState(false);
+  const [busy, setBusy] = useState<"send" | "verify" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const singleRef = useRef<HTMLInputElement>(null);
 
   const liveCount = Object.values(store.records).filter((r) => !r.deleted).length;
-
-  // Count down the code cooldown while it is running.
-  useEffect(() => {
-    if (!open) return;
-    const tick = () => setLockLeft(otpLockRemaining(readOtpGate(), Date.now()));
-    tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [open]);
-
-  const needOnline = () => {
-    if (store.online) return true;
-    toast.error("အင်တာနက် ချိတ်ဆက်ပြီးမှ ပြန်ကြိုးစားပါ");
-    return false;
-  };
-
-  const passwordAction = async (kind: "signin" | "signup") => {
-    if (!loginIdentity(identifier)) {
-      toast.error("Email သို့မဟုတ် ဖုန်းနံပါတ် မှန်ကန်စွာ ထည့်ပါ");
-      return;
-    }
-    if (password.length < MIN_PASSWORD) {
-      toast.error("Password အနည်းဆုံး ၆ လုံး ထည့်ပါ");
-      return;
-    }
-    if (!needOnline()) return;
-    setBusy(kind);
-    try {
-      const n = kind === "signin" ? await passwordSignIn(identifier, password) : await passwordSignUp(identifier, password);
-      if (n === null) {
-        toast.success("အကောင့် ဖွင့်ပြီးပါပြီ။ Email ကို အတည်ပြုပြီးမှ ဝင်ပါ။");
-        return;
-      }
-      setPassword("");
-      toast.success(`Cloud Sync ချိတ်ဆက်ပြီးပါပြီ — မှတ်တမ်း ${n} ခု`);
-    } catch (err) {
-      toast.error(errorText(err));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const send = async () => {
     const e = email.trim().toLowerCase();
@@ -134,12 +48,15 @@ export function SettingsSheet({
       toast.error("Email လိပ်စာ မှန်ကန်စွာ ထည့်ပါ");
       return;
     }
-    if (!needOnline()) return;
+    if (!store.online) {
+      toast.error("အင်တာနက် ချိတ်ဆက်ပြီးမှ Code ပို့ပါ");
+      return;
+    }
     setBusy("send");
     try {
       await sendEmailCode(e);
       setSent(true);
-      toast.success("ဂဏန်း ၆ လုံး Code ကို Email သို့ ပို့လိုက်ပါပြီ");
+      toast.success("Code ကို Email သို့ ပို့လိုက်ပါပြီ");
     } catch (err) {
       toast.error(errorText(err));
     } finally {
@@ -149,12 +66,8 @@ export function SettingsSheet({
 
   const verify = async () => {
     const token = code.replace(/\D/g, "");
-    if (token.length !== OTP_LENGTH) {
-      toast.error("Code ဂဏန်း ၆ လုံး အပြည့် ထည့်ပါ");
-      return;
-    }
-    if (lockLeft > 0) {
-      toast.error(`Code အကြိမ်များစွာ မှားသွားပါသည်။ ${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ။`);
+    if (token.length < 6) {
+      toast.error("Code ဂဏန်း ၆ လုံး ထည့်ပါ");
       return;
     }
     setBusy("verify");
@@ -163,33 +76,6 @@ export function SettingsSheet({
       setCode("");
       setSent(false);
       toast.success(`Cloud Sync ချိတ်ဆက်ပြီးပါပြီ — မှတ်တမ်း ${n} ခု`);
-    } catch (err) {
-      const gate = (err as { otpGate?: OtpGate }).otpGate;
-      setCode("");
-      if (gate && gate.lockedUntil > Date.now()) {
-        setLockLeft(gate.lockedUntil - Date.now());
-        toast.error("Code ၅ ကြိမ် မှားသွားပါသည်။ ၂ မိနစ် စောင့်ပြီးမှ ထပ်ကြိုးစားပါ။");
-      } else if (gate) {
-        toast.error(`Code မှားနေပါသည်။ ကျန်ရှိသော အကြိမ် — ${OTP_MAX_ATTEMPTS - gate.failures}`);
-      } else {
-        toast.error(errorText(err));
-      }
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const savePassword = async () => {
-    if (newPw.length < MIN_PASSWORD) {
-      toast.error("Password အနည်းဆုံး ၆ လုံး ထည့်ပါ");
-      return;
-    }
-    setBusy("setpw");
-    try {
-      await setAccountPassword(newPw);
-      setNewPw("");
-      setShowSetPw(false);
-      toast.success("Password သတ်မှတ်ပြီးပါပြီ — အခြားဖုန်းများတွင် Password ဖြင့် ဝင်နိုင်ပါပြီ");
     } catch (err) {
       toast.error(errorText(err));
     } finally {
@@ -243,17 +129,17 @@ export function SettingsSheet({
 
         <section className="mt-6 space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
           <h3 className="flex items-center gap-2 font-display text-base font-bold text-primary">
-            <CloudUpload className="h-5 w-5" /> Cloud Sync (ဖုန်းအားလုံး ချိတ်ဆက်ရန်)
+            <CloudUpload className="h-5 w-5" /> Email Cloud Sync
           </h3>
 
           {store.userId ? (
             <div className="space-y-3">
               <div className="flex items-start gap-2 rounded-xl bg-event p-3 text-sm text-event-foreground">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="min-w-0">
-                  <div className="break-all font-semibold">{accountLabel(store.email)}</div>
+                <div>
+                  <div className="font-semibold">{store.email}</div>
                   <div className="text-xs">
-                    ဤအကောင့်ဖြင့် ဝင်ထားသော ဖုန်း/ကွန်ပျူတာ အားလုံး အလိုအလျောက် Sync ဖြစ်ပါသည်
+                    ဤ Email ဖြင့် ချိတ်ထားသော ဖုန်းအားလုံး အလိုအလျောက် Sync ဖြစ်ပါသည်
                   </div>
                 </div>
               </div>
@@ -284,154 +170,54 @@ export function SettingsSheet({
                   <LogOut /> Disconnect
                 </Button>
               </div>
-              {showSetPw ? (
-                <div className="space-y-2 border-t border-border pt-3">
-                  <Label htmlFor="new-pw">Password အသစ် (အနည်းဆုံး ၆ လုံး)</Label>
-                  <Input
-                    id="new-pw"
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPw}
-                    onChange={(e) => setNewPw(e.target.value)}
-                    className="h-11 text-base"
-                  />
-                  <Button variant="champagne" className="w-full" onClick={savePassword} disabled={busy !== null}>
-                    {busy === "setpw" ? <Loader2 className="animate-spin" /> : <KeyRound />} Password သိမ်းမည်
-                  </Button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowSetPw(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  <KeyRound className="h-3.5 w-3.5" /> Password သတ်မှတ် / ပြောင်းမည်
-                </button>
-              )}
             </div>
           ) : (
             <div className="space-y-3">
-              <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
-                {(
-                  [
-                    { k: "password", label: "🔑 Password ဖြင့်" },
-                    { k: "code", label: "✉️ 6-Digit Code" },
-                  ] as const
-                ).map(({ k, label }) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={method === k}
-                    onClick={() => setMethod(k)}
-                    className={cn(
-                      "rounded-full px-2 py-2 text-[13px] leading-tight transition",
-                      method === k ? "bg-card font-semibold text-primary shadow-soft" : "text-muted-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="space-y-1.5">
+                <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
+                <Input
+                  id="sync-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="shop@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 text-base"
+                />
               </div>
+              <Button variant="burgundy" size="xl" className="w-full" onClick={send} disabled={busy !== null}>
+                {busy === "send" ? <Loader2 className="animate-spin" /> : <Mail />}
+                Send Verification Code / Code ပို့ပါ
+              </Button>
 
-              {method === "password" ? (
-                <div className="space-y-3">
+              {sent && (
+                <div className="space-y-3 border-t border-border pt-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="sync-id">Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
+                    <Label htmlFor="sync-code">Enter 6-Digit Code</Label>
                     <Input
-                      id="sync-id"
-                      autoComplete="username"
-                      placeholder="shop@gmail.com / 09xxxxxxxxx"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      className="h-11 text-base"
+                      id="sync-code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={8}
+                      placeholder="••••••"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                      className="h-12 text-center font-display text-2xl tracking-[0.5em]"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="sync-pw">Password (အနည်းဆုံး ၆ လုံး)</Label>
-                    <div className="relative">
-                      <Input
-                        id="sync-pw"
-                        type={showPw ? "text" : "password"}
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && void passwordAction("signin")}
-                        className="h-11 pr-11 text-base"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw((v) => !v)}
-                        aria-label={showPw ? "Hide password" : "Show password"}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
-                      >
-                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void passwordAction("signin")} disabled={busy !== null}>
-                    {busy === "signin" ? <Loader2 className="animate-spin" /> : <LogIn />} ဝင်မည် (Sign In)
-                  </Button>
-                  <Button variant="champagne" size="xl" className="w-full" onClick={() => void passwordAction("signup")} disabled={busy !== null}>
-                    {busy === "signup" ? <Loader2 className="animate-spin" /> : <UserPlus />} အကောင့်သစ် ဖွင့်မည် (Register)
+                  <Button variant="champagne" size="xl" className="w-full" onClick={verify} disabled={busy !== null}>
+                    {busy === "verify" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                    Verify & Connect
                   </Button>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    ပထမဆုံး ဖုန်းတွင် “အကောင့်သစ် ဖွင့်မည်” ကို တစ်ကြိမ်သာ နှိပ်ပါ။ အခြားဖုန်း/ကွန်ပျူတာများတွင် Email (သို့) ဖုန်းနံပါတ်နှင့် Password တူတူဖြင့် “ဝင်မည်” နှိပ်ပါက မှတ်တမ်းအားလုံး ချက်ချင်း ရောက်လာပါမည်။
+                    Email ထဲတွင် Code မတွေ့ပါက Spam ကို စစ်ပါ။ Email ထဲရှိ ဂဏန်း Code ကို ဤနေရာတွင် ရိုက်ထည့်ပါ။
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
-                    <Input
-                      id="sync-email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      placeholder="shop@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-11 text-base"
-                    />
-                  </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={send} disabled={busy !== null}>
-                    {busy === "send" ? <Loader2 className="animate-spin" /> : <Mail />}
-                    Send Verification Code / Code ပို့ပါ
-                  </Button>
-
-                  {sent && (
-                    <div className="space-y-3 border-t border-border pt-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="sync-code">Enter 6-Digit Code</Label>
-                        <Input
-                          id="sync-code"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          pattern="[0-9]*"
-                          maxLength={OTP_LENGTH}
-                          placeholder="••••••"
-                          value={code}
-                          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))}
-                          className="h-12 text-center font-display text-2xl tracking-[0.5em]"
-                        />
-                      </div>
-                      <Button
-                        variant="champagne"
-                        size="xl"
-                        className="w-full"
-                        onClick={verify}
-                        disabled={busy !== null || lockLeft > 0}
-                      >
-                        {busy === "verify" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-                        {lockLeft > 0 ? `${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ` : "Verify & Connect"}
-                      </Button>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        Email ထဲတွင် Code မတွေ့ပါက Spam ကို စစ်ပါ။ ဂဏန်း ၆ လုံး Code ကို ဤနေရာတွင် ရိုက်ထည့်ပါ (၅ ကြိမ်အထိ ကြိုးစားနိုင်ပါသည်)။
-                      </p>
-                    </div>
-                  )}
-                </div>
               )}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                ဖုန်း A တွင် ချိတ်ပြီးနောက် ဖုန်း B တွင် Email တူတူဖြင့် Code ထပ်တောင်းပါက မှတ်တမ်းအားလုံး ချက်ချင်း ရောက်လာပါမည်။
+              </p>
             </div>
           )}
         </section>

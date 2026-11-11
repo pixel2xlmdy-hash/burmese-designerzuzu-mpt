@@ -8,9 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createRecord, saveRecord } from "@/lib/store";
 import {
-  BACK_WAIST_SLOTS,
   BODY_FIELDS,
-  fitSlots,
   computeBalance,
   emptyMeasurement,
   formatAmount,
@@ -34,7 +32,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const fieldInput = "h-11 bg-background/60 text-base";
-const MY_NUMS = ["၁", "၂", "၃", "၄", "၅", "၆"];
 
 export function MeasurementForm({
   record,
@@ -51,7 +48,7 @@ export function MeasurementForm({
       ...base,
       ...d,
       fields: { ...d.fields },
-      backWaist: fitSlots(d.backWaist, BACK_WAIST_SLOTS),
+      backWaist: [...(d.backWaist ?? []), ...base.backWaist].slice(0, 5),
       sleeveLength: [...(d.sleeveLength ?? []), ...base.sleeveLength].slice(0, 4),
       sleeveOpening: [...(d.sleeveOpening ?? []), ...base.sleeveOpening].slice(0, 4),
     };
@@ -171,27 +168,7 @@ export function MeasurementForm({
       </Section>
 
       <Section title="အရှည် / အဝ (Multi-slot)">
-        <div className="space-y-1.5">
-          <Label className="text-sm">
-            နောက်ခါးရှည် (Back Waist Length){" "}
-            <span className="text-xs text-muted-foreground">— အကွက် ၁ မှ အကွက် ၆ ထိ (လက်မ)</span>
-          </Label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {data.backWaist.map((v, i) => (
-              <label key={i} className="space-y-0.5">
-                <span className="block text-center text-[11px] text-muted-foreground">အကွက် {MY_NUMS[i]}</span>
-                <Input
-                  aria-label={`နောက်ခါးရှည် အကွက် ${i + 1}`}
-                  inputMode="decimal"
-                  placeholder="0.0"
-                  value={v}
-                  onChange={(e) => setSlot("backWaist", i, e.target.value)}
-                  className="h-11 bg-background/60 px-1.5 text-center text-base"
-                />
-              </label>
-            ))}
-          </div>
-        </div>
+        {slotRow("backWaist", "နောက်ခါးရှည် (Back Waist Length)")}
         {slotRow("sleeveLength", "လက်ရှည် (Sleeve Length)")}
         {slotRow("sleeveOpening", "လက်ဝ (Sleeve Opening / Wrist)")}
       </Section>

@@ -1,15 +1,7 @@
 import { forwardRef, useEffect, useState } from "react";
 
 import { BRAND_SUBTITLE, BRAND_TITLE, PHONE_1, PHONE_2 } from "@/lib/brand";
-import {
-  BACK_WAIST_SLOTS,
-  BODY_FIELDS,
-  computeBalance,
-  fitSlots,
-  formatAmount,
-  parseAmount,
-  type MeasurementData,
-} from "@/lib/tailor";
+import { BODY_FIELDS, computeBalance, formatAmount, parseAmount, type MeasurementData } from "@/lib/tailor";
 import { Logo } from "./Logo";
 
 function Cell({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
@@ -24,19 +16,13 @@ function Cell({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-function Slots({ label, values, numbered }: { label: string; values: string[]; numbered?: boolean }) {
+function Slots({ label, values }: { label: string; values: string[] }) {
   return (
     <div className="flex items-center gap-2">
       <span className="w-[150px] shrink-0 text-[11.5px] text-muted-foreground">{label}</span>
       <div className="grid flex-1 gap-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0,1fr))` }}>
         {values.map((v, i) => (
-          <span
-            key={i}
-            className="relative min-w-0 truncate rounded border border-border px-1 py-[2px] text-center text-[12.5px] font-semibold text-ink"
-          >
-            {numbered ? (
-              <span className="absolute left-[3px] top-0 text-[8.5px] font-normal leading-tight text-muted-foreground">{i + 1}</span>
-            ) : null}
+          <span key={i} className="rounded border border-border px-1 py-[2px] text-center text-[12.5px] font-semibold text-ink">
             {v || "\u00a0"}
           </span>
         ))}
@@ -139,7 +125,7 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
 
         {/* Multi-slots */}
         <div className="space-y-1.5 border-t border-border py-2.5">
-          <Slots label="နောက်ခါးရှည် (၁–၆)" values={fitSlots(data.backWaist, BACK_WAIST_SLOTS)} numbered />
+          <Slots label="နောက်ခါးရှည်" values={data.backWaist} />
           <Slots label="လက်ရှည်" values={data.sleeveLength} />
           <Slots label="လက်ဝ" values={data.sleeveOpening} />
         </div>

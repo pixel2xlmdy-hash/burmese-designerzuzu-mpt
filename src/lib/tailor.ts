@@ -10,7 +10,7 @@ export interface MeasurementData {
   eventDate: string;
   fields: Record<string, string>;
   elbowNote: string;
-  backWaist: string[]; // 6 slots (older records may hold 5)
+  backWaist: string[]; // 5 slots
   sleeveLength: string[]; // 4 slots
   sleeveOpening: string[]; // 4 slots
   notes: string;
@@ -25,8 +25,6 @@ export interface MeasurementData {
   customerSigText?: string;
   /** Per-voucher header/footer overrides; empty values fall back to the shop defaults. */
   voucher?: Partial<VoucherCustom>;
-  /** Tailoring & fashion design cost voucher for this customer (created on first open). */
-  cost?: CostVoucherData;
 }
 
 export type SigMode = "draw" | "type";
@@ -84,7 +82,7 @@ export function emptyMeasurement(today: string): MeasurementData {
     eventDate: "",
     fields: {},
     elbowNote: "",
-    backWaist: ["", "", "", "", "", ""],
+    backWaist: ["", "", "", "", ""],
     sleeveLength: ["", "", "", ""],
     sleeveOpening: ["", "", "", ""],
     notes: "",
@@ -98,147 +96,6 @@ export function emptyMeasurement(today: string): MeasurementData {
     customerSigText: "",
     voucher: {},
   };
-}
-
-/** Pads or trims a slot list to exactly `n` entries. */
-export function fitSlots(values: string[] | undefined, n: number): string[] {
-  return [...(values ?? []), ...Array<string>(n).fill("")].slice(0, n);
-}
-
-export const BACK_WAIST_SLOTS = 6;
-
-/* ---------- cost voucher ---------- */
-
-export interface SigSlot {
-  mode: SigMode;
-  img: string; // data URL when drawn
-  text: string; // typed name
-}
-
-export interface CostItem {
-  qty: string;
-  unitPrice: string;
-  remark: string;
-}
-
-export interface CostBrand {
-  logo: string; // URL or data URL
-  designer: string;
-  phones: string;
-  motto: string;
-}
-
-export type CostSigKey = "received" | "prepared" | "checked" | "approved";
-
-export interface CostVoucherData {
-  voucherNo: string;
-  date: string;
-  /** Empty means "use the customer profile". */
-  customerName: string;
-  phone: string;
-  designName: string;
-  garmentType: string;
-  items: Record<string, CostItem>;
-  note: string;
-  advance: string;
-  profitPercent: string;
-  signatures: Record<CostSigKey, SigSlot>;
-  brand: Partial<CostBrand>;
-}
-
-/** Cost rows 1–10, in the shop's required order. */
-export const COST_ITEMS: { key: string; icon: string; en: string; my: string }[] = [
-  { key: "fabric", icon: "🧵", en: "Fabric Cost", my: "ပိတ်စ" },
-  { key: "interlining", icon: "📐", en: "Interlining / Fusing", my: "ကော်ပိတ်ဖိုး" },
-  { key: "beads", icon: "📿", en: "Beads & Stones", my: "ပုတီး၊ ကျောက်မြတ်" },
-  { key: "accessories", icon: "🎀", en: "Accessories", my: "ထုပ်သီး၊ ဇစ်၊ ကြယ်သီး၊ အုံခွက်" },
-  { key: "sequins", icon: "💎", en: "Sequins", my: "စီးကွင့်" },
-  { key: "handmade", icon: "🪡", en: "Handmade / Hand Embroidery", my: "လက်ခ" },
-  { key: "decorative", icon: "🌸", en: "Decorative Work", my: "အလှဆင်လုပ်အားခ" },
-  { key: "design", icon: "✏️", en: "Design Fee", my: "ဒီဇိုင်းဖန်တီးခ" },
-  { key: "other", icon: "✂️", en: "Other Expenses", my: "အခြားအထွေထွေကုန်ကျစရိတ်" },
-  { key: "tailoring", icon: "👗", en: "Tailoring Charges", my: "အထည်ချုပ်ခ" },
-];
-
-export const COST_SIGNATURES: { key: CostSigKey; en: string; my: string }[] = [
-  { key: "received", en: "Received By", my: "လက်ခံသူ" },
-  { key: "prepared", en: "Prepared By", my: "အမြဲပြင်သူ" },
-  { key: "checked", en: "Checked By", my: "စစ်ဆေးသူ" },
-  { key: "approved", en: "Approved By", my: "ခွင့်ပြုသူ" },
-];
-
-const emptySig = (): SigSlot => ({ mode: "draw", img: "", text: "" });
-
-export function emptyCost(voucherNo: string, date: string, brand: Partial<CostBrand> = {}): CostVoucherData {
-  return {
-    voucherNo,
-    date,
-    customerName: "",
-    phone: "",
-    designName: "",
-    garmentType: "",
-    items: {},
-    note: "",
-    advance: "",
-    profitPercent: "",
-    signatures: { received: emptySig(), prepared: emptySig(), checked: emptySig(), approved: emptySig() },
-    brand: { ...brand },
-  };
-}
-
-/** Fills in anything missing from an older or partial cost voucher. */
-export function normalizeCost(c: Partial<CostVoucherData>): CostVoucherData {
-  const base = emptyCost(c.voucherNo ?? "", c.date ?? "");
-  return {
-    ...base,
-    ...c,
-    items: { ...(c.items ?? {}) },
-    signatures: { ...base.signatures, ...(c.signatures ?? {}) },
-    brand: { ...(c.brand ?? {}) },
-  };
-}
-
-/** Amount = Qty × Unit Price. A blank Qty counts as 1; no unit price means no amount. */
-export function costItemAmount(item: CostItem | undefined): number {
-  if (!item || !item.unitPrice?.trim()) return 0;
-  const qty = item.qty?.trim() ? parseAmount(item.qty) : 1;
-  return qty * parseAmount(item.unitPrice);
-}
-
-export interface CostTotals {
-  /** Row 12 and "Total Cost": sum of rows 1–10. */
-  total: number;
-  advance: number;
-  /** Total − Advance Payment. */
-  balance: number;
-  profitPercent: number;
-  /** Total Cost + Total Cost × Profit% / 100. */
-  sellingPrice: number;
-}
-
-export function costTotals(c: Pick<CostVoucherData, "items" | "advance" | "profitPercent">): CostTotals {
-  const total = COST_ITEMS.reduce((sum, it) => sum + costItemAmount(c.items[it.key]), 0);
-  const advance = parseAmount(c.advance);
-  const profitPercent = parseAmount(c.profitPercent);
-  return {
-    total,
-    advance,
-    balance: total - advance,
-    profitPercent,
-    sellingPrice: total + (total * profitPercent) / 100,
-  };
-}
-
-/** Next 6-digit voucher number: one more than the highest number already used. */
-export function nextVoucherNo(records: TailorRecord[]): string {
-  let max = 0;
-  for (const r of records) {
-    if (r.kind !== "measurement") continue;
-    const no = (r.data as MeasurementData).cost?.voucherNo;
-    const n = no ? Number.parseInt(toAsciiDigits(no).replace(/\D/g, ""), 10) : 0;
-    if (Number.isFinite(n) && n > max) max = n;
-  }
-  return String(max + 1).padStart(6, "0");
 }
 
 export function emptyNote(today: string): NoteData {

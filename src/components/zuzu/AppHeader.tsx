@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 
 export function AppHeader({ store, onSettings }: { store: StoreState; onSettings: () => void }) {
-  const connected = store.online && !!store.userId;
-  const status = connected
-    ? { main: store.syncing ? "Syncing…" : "Cloud Sync Active", sub: "(Online)", dot: "bg-online" }
-    : { main: "Local Storage", sub: "(Offline)", dot: "bg-offline" };
+  const status = !store.online
+    ? { label: "Offline", dot: "bg-offline" }
+    : store.userId
+      ? { label: store.syncing ? "Syncing…" : "Cloud Sync Active", dot: "bg-online", active: !store.syncing }
+      : { label: "Local", dot: "bg-muted-foreground/50" };
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-md">
@@ -23,17 +24,13 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
           </p>
         </div>
         <span
-          role="status"
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] leading-tight shadow-soft",
-            connected ? "bg-event font-semibold text-event-foreground" : "bg-card text-muted-foreground",
+            "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] shadow-soft",
+            "active" in status && status.active ? "bg-event font-semibold text-event-foreground" : "bg-card text-muted-foreground",
           )}
         >
-          <span className={cn("h-2 w-2 shrink-0 rounded-full", status.dot, store.syncing && "animate-pulse")} />
-          <span className="flex flex-col whitespace-nowrap sm:flex-row sm:gap-1">
-            <span>{status.main}</span>
-            <span className="font-normal opacity-80">{status.sub}</span>
-          </span>
+          <span className={cn("h-2 w-2 rounded-full", status.dot, store.syncing && "animate-pulse")} />
+          {status.label}
         </span>
         <Button variant="soft" size="icon-lg" onClick={onSettings} aria-label="Settings">
           <Settings className="!size-5" />
