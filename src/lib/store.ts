@@ -4,6 +4,13 @@ import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  loginIdentity,
+  OTP_GATE_OPEN,
+  otpLockRemaining,
+  otpRecordFailure,
+  type OtpGate,
+} from "./auth-helpers";
 import { mergeImported, parseBackupRecords, pickNewer, type TailorRecord } from "./tailor";
 
 const RECORDS_KEY = "zuzu.records.v1";
@@ -319,7 +326,50 @@ export function startStore() {
   });
 }
 
-/** Emails a numeric one-time code (the email template decides what the message shows). */
+/* ---------- sign-in ---------- */
+
+/** Waits for any running sync, then returns the live record count (throws if the sync failed). */
+async function connectAndCount(userId: string, email: string | null): Promise<number> {
+  await onSignedIn(userId, email);
+  for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 250));
+  if (state.error) throw new Error(state.error);
+  return Object.values(state.records).filter((r) => !r.deleted).length;
+}
+
+/** Signs in with email-or-phone + password, then pulls every customer saved under that account. */
+export async function passwordSignIn(identifier: string, password: string): Promise<number> {
+  const id = loginIdentity(identifier);
+  if (!id) throw new Error("invalid identity");
+  const { data, error } = await supabase.auth.signInWithPassword({ email: id.email, password });
+  if (error) throw error;
+  return connectAndCount(data.user.id, data.user.email ?? id.email);
+}
+
+/** Creates an email-or-phone + password account. Returns the record count, or null if email confirmation is still needed. */
+export async function passwordSignUp(identifier: string, password: string): Promise<number | null> {
+  const id = loginIdentity(identifier);
+  if (!id) throw new Error("invalid identity");
+  const { data, error } = await supabase.auth.signUp({
+    email: id.email,
+    password,
+    options: { emailRedirectTo: window.location.origin },
+  });
+  if (error) throw error;
+  // An existing email comes back with no identities instead of an error.
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    throw new Error("User already registered");
+  }
+  if (!data.session || !data.user) return null;
+  return connectAndCount(data.user.id, data.user.email ?? id.email);
+}
+
+/** Adds or changes the password of the signed-in account (e.g. after signing in with a code). */
+export async function setAccountPassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+/** Emails a 6-digit one-time code. */
 export async function sendEmailCode(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -328,17 +378,38 @@ export async function sendEmailCode(email: string) {
   if (error) throw error;
 }
 
-/** Verifies the emailed code, then pulls every customer saved under this email. Returns the live record count. */
+const OTP_GATE_KEY = "zuzu.otpGate.v1";
+
+export function readOtpGate(): OtpGate {
+  try {
+    return { ...OTP_GATE_OPEN, ...JSON.parse(localStorage.getItem(OTP_GATE_KEY) || "{}") };
+  } catch {
+    return OTP_GATE_OPEN;
+  }
+}
+
+function writeOtpGate(gate: OtpGate) {
+  try {
+    localStorage.setItem(OTP_GATE_KEY, JSON.stringify(gate));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Verifies the emailed code inside the app, then pulls every customer saved under this email. */
 export async function verifyEmailCode(email: string, token: string): Promise<number> {
+  const now = Date.now();
+  if (otpLockRemaining(readOtpGate(), now) > 0) throw new Error("otp locked");
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-  if (error) throw error;
+  if (error) {
+    const gate = otpRecordFailure(readOtpGate(), Date.now());
+    writeOtpGate(gate);
+    throw Object.assign(error, { otpGate: gate });
+  }
+  writeOtpGate(OTP_GATE_OPEN);
   const u = data.user ?? data.session?.user;
   if (!u) throw new Error("Verification failed");
-  await onSignedIn(u.id, u.email ?? email);
-  // If another sync was already running, wait for it to settle before counting.
-  for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 250));
-  if (state.error) throw new Error(state.error);
-  return Object.values(state.records).filter((r) => !r.deleted).length;
+  return connectAndCount(u.id, u.email ?? email);
 }
 
 export async function disconnectCloud() {
