@@ -8,6 +8,7 @@ import {
   costRowAmount,
   costTotals,
   formatAmount,
+  parseAmount,
   type CostBrand,
   type CostVoucherData,
   type SigSlot,
@@ -123,7 +124,7 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
                   <td className={`${td} text-center`}>{i + 1}</td>
                   <td className={td}>{r.label || "—"}</td>
                   <td className={`${td} text-center`}>{r.qty}</td>
-                  <td className={`${td} text-right`}>{r.unitPrice ? formatAmount(Number(r.unitPrice.replace(/[^0-9.]/g, "")) || 0) : ""}</td>
+                  <td className={`${td} text-right`}>{r.unitPrice ? formatAmount(parseAmount(r.unitPrice)) : ""}</td>
                   <td className={`${td} text-right font-semibold`}>{money(costRowAmount(r))}</td>
                   <td className={`${td} text-[10.5px]`}>{r.remark}</td>
                 </tr>
