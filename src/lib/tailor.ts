@@ -1,6 +1,6 @@
 // Pure, browser-safe helpers for tailor records: types, money, dates, search, merging.
 
-export type RecordKind = "measurement" | "note";
+export type RecordKind = "measurement" | "note" | "cost";
 
 export interface MeasurementData {
   name: string;
@@ -25,8 +25,6 @@ export interface MeasurementData {
   customerSigText?: string;
   /** Per-voucher header/footer overrides; empty values fall back to the shop defaults. */
   voucher?: Partial<VoucherCustom>;
-  /** Tailoring & fashion design cost voucher for this customer (created on first open). */
-  cost?: CostVoucherData;
 }
 
 export type SigMode = "draw" | "type";
@@ -49,7 +47,7 @@ export interface NoteData {
 export interface TailorRecord {
   id: string;
   kind: RecordKind;
-  data: MeasurementData | NoteData;
+  data: MeasurementData | NoteData | CostVoucherData;
   deleted: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -115,12 +113,16 @@ export interface SigSlot {
   text: string; // typed name
 }
 
-export interface CostItem {
+/** One billing line. `label` is the editable description. */
+export interface CostRow {
+  id: string;
+  label: string;
   qty: string;
   unitPrice: string;
   remark: string;
 }
 
+/** Shop-wide cost voucher branding (logo, designer, phones, motto). */
 export interface CostBrand {
   logo: string; // URL or data URL
   designer: string;
@@ -130,59 +132,78 @@ export interface CostBrand {
 
 export type CostSigKey = "received" | "prepared" | "checked" | "approved";
 
+/** A Tailoring & Fashion Design Cost Voucher (its own record, kind "cost"). */
 export interface CostVoucherData {
   voucherNo: string;
-  date: string;
-  /** Empty means "use the customer profile". */
+  date: string; // DD/MM/YYYY
+  customerId: string; // linked measurement record, "" for a new customer
   customerName: string;
   phone: string;
   designName: string;
   garmentType: string;
-  items: Record<string, CostItem>;
+  rows: CostRow[];
   note: string;
   advance: string;
   profitPercent: string;
   signatures: Record<CostSigKey, SigSlot>;
-  brand: Partial<CostBrand>;
+  /** Set when the shop branding was last saved from this voucher; the newest one is used everywhere. */
+  brand?: Partial<CostBrand>;
+  brandAt?: string; // ISO
 }
 
-/** Cost rows 1–10, in the shop's required order. */
-export const COST_ITEMS: { key: string; icon: string; en: string; my: string }[] = [
-  { key: "fabric", icon: "🧵", en: "Fabric Cost", my: "ပိတ်စ" },
-  { key: "interlining", icon: "📐", en: "Interlining / Fusing", my: "ကော်ပိတ်ဖိုး" },
-  { key: "beads", icon: "📿", en: "Beads & Stones", my: "ပုတီး၊ ကျောက်မြတ်" },
-  { key: "accessories", icon: "🎀", en: "Accessories", my: "ထုပ်သီး၊ ဇစ်၊ ကြယ်သီး၊ အုံခွက်" },
-  { key: "sequins", icon: "💎", en: "Sequins", my: "စီးကွင့်" },
-  { key: "handmade", icon: "🪡", en: "Handmade / Hand Embroidery", my: "လက်ခ" },
-  { key: "decorative", icon: "🌸", en: "Decorative Work", my: "အလှဆင်လုပ်အားခ" },
-  { key: "design", icon: "✏️", en: "Design Fee", my: "ဒီဇိုင်းဖန်တီးခ" },
-  { key: "other", icon: "✂️", en: "Other Expenses", my: "အခြားအထွေထွေကုန်ကျစရိတ်" },
-  { key: "tailoring", icon: "👗", en: "Tailoring Charges", my: "အထည်ချုပ်ခ" },
+/** Default description labels for rows 1–10, in the shop's required order. Every label is editable. */
+export const COST_PRESETS: string[] = [
+  "🧵 Fabric Cost (ပိတ်စ)",
+  "📐 Interlining / Fusing (ကော်ပိတ်ဖိုး)",
+  "📿 Beads & Stones (ပုတီး၊ ကျောက်မြတ်)",
+  "🎀 Accessories (ထုပ်သီး၊ ဇစ်၊ ကြယ်သီး၊ အုံခွက်)",
+  "💎 Sequins (စီးကွင့်)",
+  "🪡 Handmade / Hand Embroidery (လက်ခ)",
+  "🌸 Decorative Work (အလှဆင်လုပ်အားခ)",
+  "✏️ Design Fee (ဒီဇိုင်းဖန်တီးခ)",
+  "✂️ Other Expenses (အခြားအထွေထွေကုန်ကျစရိတ်)",
+  "👗 Tailoring Charges (အထည်ချုပ်ခ)",
 ];
+
+export const COST_NOTE_LABEL = "Additional Note (အထွေထွေမှတ်ချက်)";
+export const COST_TOTAL_LABEL = "🧵 Tailoring Charges + Materials Total (အထည်ချုပ်ခ + ပစ္စည်းဖိုး စုစုပေါင်း)";
 
 export const COST_SIGNATURES: { key: CostSigKey; en: string; my: string }[] = [
   { key: "received", en: "Received By", my: "လက်ခံသူ" },
-  { key: "prepared", en: "Prepared By", my: "အမြဲပြင်သူ" },
+  { key: "prepared", en: "Prepared By", my: "အပ်ချုပ်သူ" },
   { key: "checked", en: "Checked By", my: "စစ်ဆေးသူ" },
   { key: "approved", en: "Approved By", my: "ခွင့်ပြုသူ" },
 ];
 
+export const DEFAULT_COST_BRAND: CostBrand = {
+  logo: "/brand-logo.jpg",
+  designer: "Designer: Zu Zu",
+  phones: "09789104156 | 09940744566",
+  motto: "Fashion is not just clothing, it's an art of life.",
+};
+
+let rowSeq = 0;
+export function newCostRow(label = ""): CostRow {
+  rowSeq += 1;
+  return { id: `r${Date.now().toString(36)}${rowSeq}`, label, qty: "", unitPrice: "", remark: "" };
+}
+
 const emptySig = (): SigSlot => ({ mode: "draw", img: "", text: "" });
 
-export function emptyCost(voucherNo: string, date: string, brand: Partial<CostBrand> = {}): CostVoucherData {
+export function emptyCost(voucherNo: string, date: string): CostVoucherData {
   return {
     voucherNo,
     date,
+    customerId: "",
     customerName: "",
     phone: "",
     designName: "",
     garmentType: "",
-    items: {},
+    rows: COST_PRESETS.map((l) => newCostRow(l)),
     note: "",
     advance: "",
     profitPercent: "",
     signatures: { received: emptySig(), prepared: emptySig(), checked: emptySig(), approved: emptySig() },
-    brand: { ...brand },
   };
 }
 
@@ -192,21 +213,20 @@ export function normalizeCost(c: Partial<CostVoucherData>): CostVoucherData {
   return {
     ...base,
     ...c,
-    items: { ...(c.items ?? {}) },
+    rows: Array.isArray(c.rows) ? c.rows.map((r) => ({ ...newCostRow(), ...r })) : base.rows,
     signatures: { ...base.signatures, ...(c.signatures ?? {}) },
-    brand: { ...(c.brand ?? {}) },
   };
 }
 
 /** Amount = Qty × Unit Price. A blank Qty counts as 1; no unit price means no amount. */
-export function costItemAmount(item: CostItem | undefined): number {
-  if (!item || !item.unitPrice?.trim()) return 0;
-  const qty = item.qty?.trim() ? parseAmount(item.qty) : 1;
-  return qty * parseAmount(item.unitPrice);
+export function costRowAmount(row: Pick<CostRow, "qty" | "unitPrice"> | undefined): number {
+  if (!row || !row.unitPrice?.trim()) return 0;
+  const qty = row.qty?.trim() ? parseAmount(row.qty) : 1;
+  return qty * parseAmount(row.unitPrice);
 }
 
 export interface CostTotals {
-  /** Row 12 and "Total Cost": sum of rows 1–10. */
+  /** The "Tailoring Charges + Materials Total" row and "Total Cost": sum of every item row. */
   total: number;
   advance: number;
   /** Total − Advance Payment. */
@@ -216,8 +236,8 @@ export interface CostTotals {
   sellingPrice: number;
 }
 
-export function costTotals(c: Pick<CostVoucherData, "items" | "advance" | "profitPercent">): CostTotals {
-  const total = COST_ITEMS.reduce((sum, it) => sum + costItemAmount(c.items[it.key]), 0);
+export function costTotals(c: Pick<CostVoucherData, "rows" | "advance" | "profitPercent">): CostTotals {
+  const total = c.rows.reduce((sum, r) => sum + costRowAmount(r), 0);
   const advance = parseAmount(c.advance);
   const profitPercent = parseAmount(c.profitPercent);
   return {
@@ -233,12 +253,29 @@ export function costTotals(c: Pick<CostVoucherData, "items" | "advance" | "profi
 export function nextVoucherNo(records: TailorRecord[]): string {
   let max = 0;
   for (const r of records) {
-    if (r.kind !== "measurement") continue;
-    const no = (r.data as MeasurementData).cost?.voucherNo;
+    if (r.kind !== "cost") continue;
+    const no = (r.data as CostVoucherData).voucherNo;
     const n = no ? Number.parseInt(toAsciiDigits(no).replace(/\D/g, ""), 10) : 0;
     if (Number.isFinite(n) && n > max) max = n;
   }
   return String(max + 1).padStart(6, "0");
+}
+
+/** Shop branding for cost vouchers: the most recently saved branding (synced through any voucher), else defaults. */
+export function shopCostBrand(records: TailorRecord[]): CostBrand {
+  let latest: CostVoucherData | null = null;
+  for (const r of records) {
+    if (r.kind !== "cost") continue;
+    const d = r.data as CostVoucherData;
+    if (d.brandAt && (!latest || d.brandAt > (latest.brandAt ?? ""))) latest = d;
+  }
+  const b = latest?.brand ?? {};
+  return {
+    logo: b.logo?.trim() || DEFAULT_COST_BRAND.logo,
+    designer: b.designer?.trim() || DEFAULT_COST_BRAND.designer,
+    phones: b.phones?.trim() || DEFAULT_COST_BRAND.phones,
+    motto: b.motto?.trim() || DEFAULT_COST_BRAND.motto,
+  };
 }
 
 export function emptyNote(today: string): NoteData {
@@ -301,12 +338,13 @@ export function maskDMY(raw: string): string {
 
 export function recordName(r: TailorRecord): string {
   if (r.kind === "measurement") return (r.data as MeasurementData).name;
+  if (r.kind === "cost") return (r.data as CostVoucherData).customerName;
   const n = r.data as NoteData;
   return n.name || n.title;
 }
 
 export function recordPhone(r: TailorRecord): string {
-  return (r.data as MeasurementData | NoteData).phone ?? "";
+  return (r.data as { phone?: string }).phone ?? "";
 }
 
 /** Filters records by customer name or phone number (case-insensitive, Burmese digits ok). */
@@ -316,7 +354,12 @@ export function filterRecords(records: TailorRecord[], query: string): TailorRec
   const qDigits = toAsciiDigits(q).replace(/\D/g, "");
   return records.filter((r) => {
     const name = recordName(r).toLowerCase();
-    const title = r.kind === "note" ? (r.data as NoteData).title.toLowerCase() : "";
+    const title =
+      r.kind === "note"
+        ? (r.data as NoteData).title.toLowerCase()
+        : r.kind === "cost"
+          ? `${(r.data as CostVoucherData).voucherNo} ${(r.data as CostVoucherData).designName}`.toLowerCase()
+          : "";
     if (name.includes(q) || title.includes(q)) return true;
     if (qDigits.length > 0) {
       const phone = toAsciiDigits(recordPhone(r)).replace(/\D/g, "");
@@ -347,7 +390,7 @@ export function parseBackupRecords(json: string): TailorRecord[] {
   const now = new Date().toISOString();
   return (list as Partial<TailorRecord>[])
     .filter(
-      (r) => !!r && typeof r.id === "string" && (r.kind === "measurement" || r.kind === "note") && !!r.data,
+      (r) => !!r && typeof r.id === "string" && (r.kind === "measurement" || r.kind === "note" || r.kind === "cost") && !!r.data,
     )
     .map((r) => ({
       id: r.id!,

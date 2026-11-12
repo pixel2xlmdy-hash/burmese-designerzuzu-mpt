@@ -155,7 +155,7 @@ type Row = {
 function rowToRecord(row: Row): TailorRecord {
   return {
     id: row.id,
-    kind: row.kind === "note" ? "note" : "measurement",
+    kind: row.kind === "note" || row.kind === "cost" ? row.kind : "measurement",
     data: row.data as TailorRecord["data"],
     deleted: row.deleted,
     createdAt: row.created_at,
