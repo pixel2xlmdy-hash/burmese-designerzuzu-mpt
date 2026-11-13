@@ -182,8 +182,8 @@ export const DEFAULT_COST_BRAND: CostBrand = {
   designer: "Designer: Zu Zu",
   phones: "09789104156 | 09940744566",
   motto: "Fashion is not just clothing, it's an art of life.",
-    title: "MPT FIT TAILOR PRO",
-  subtitle: "Designer Zu Zu",
+      title: "မြောက်ပြင်သူ (MPT)",
+  subtitle: "",
 };
 
 let rowSeq = 0;
