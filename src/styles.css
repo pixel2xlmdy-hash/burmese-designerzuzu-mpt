@@ -304,3 +304,10 @@
     box-shadow: none !important;
   }
 }
+[data-lovable-badge],
+.lovable-badge,
+a[href*="lovable.dev"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
