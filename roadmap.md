@@ -5,9 +5,9 @@
 - [x] Back waist: 6 slots (3x2) in form + voucher
 - [ ] New app name/icon (MYAUK PYIN THU FIT TAILOR PRO) + new inner logo
 - [ ] New splash: logo, titles, welcome text, credits, Get Started
-- [ ] Dashboard button → Cost Voucher hub (list + new)
+- [x] Dashboard button → Cost Voucher hub (list + new)
 - [ ] Cost Voucher form: pick customer, editable rows, add/delete rows, advance, profit, 4 signatures (Prepared By = အပ်ချုပ်သူ)
-- [ ] Cost voucher photo / PDF download / print (A4, one page)
+- [x] Cost voucher photo / PDF download / print (A4, one page)
 - [ ] Cost voucher customize dialog (logo, designer, phones, motto), shop-wide + synced
 - [ ] Hide Lovable badge CSS
 - [ ] Tests for cost math, voucher no
