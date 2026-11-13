@@ -127,7 +127,9 @@ export interface CostBrand {
   logo: string; // URL or data URL
   designer: string;
   phones: string;
-  motto: string;
+  motto: string;  
+title?: string;
+  subtitle?: string;
 }
 
 export type CostSigKey = "received" | "prepared" | "checked" | "approved";
@@ -180,6 +182,8 @@ export const DEFAULT_COST_BRAND: CostBrand = {
   designer: "Designer: Zu Zu",
   phones: "09789104156 | 09940744566",
   motto: "Fashion is not just clothing, it's an art of life.",
+    title: "MPT FIT TAILOR PRO",
+  subtitle: "Designer Zu Zu",
 };
 
 let rowSeq = 0;
