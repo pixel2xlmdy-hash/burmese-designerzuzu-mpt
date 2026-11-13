@@ -1,7 +1,7 @@
 export const LOGO_URL = "https://i.ibb.co/BK7KvsYp/image.png";
 export const LOGO_FALLBACK = "/icon-512.png";
 
-export const BRAND_TITLE = "မြောက်ပြင်သူ";
+export const BRAND_TITLE = "MPT FIT TAILOR PRO";
 export const BRAND_SUBTITLE = "Designer Zu Zu";
 
 export const PHONE_1 = "09789104156";
