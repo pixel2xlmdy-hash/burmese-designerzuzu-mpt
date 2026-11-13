@@ -304,10 +304,18 @@
     box-shadow: none !important;
   }
 }
+#lovable-badge,
+#lovable-badge-close,
+[id*="lovable-badge"],
+[class*="lovable-badge"],
 [data-lovable-badge],
-.lovable-badge,
-a[href*="lovable.dev"] {
+a[href*="lovable.dev"],
+button[aria-label*="Lovable"],
+button[aria-label="Close"] {
   display: none !important;
+  visibility: hidden !important;
   opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
   pointer-events: none !important;
 }
