@@ -18,7 +18,7 @@ import { downloadJson, saveImage, todayForFile } from "@/lib/download";
 import { deleteRecord, exportBackup, saveRecord } from "@/lib/store";
 import { safeFilePart, type MeasurementData, type TailorRecord } from "@/lib/tailor";
 import { Voucher } from "./Voucher";
-import { VoucherCustomizeDialog } from "./VoucherCustomizeDialog";
+import { VoucherCustomizeDialog, loadSavedVoucherCustom } from "./VoucherCustomizeDialog";
 
 const DESIGN_WIDTH = 760;
 
@@ -31,7 +31,11 @@ export function VoucherView({
   onBack: () => void;
   onEdit: () => void;
 }) {
-  const data = record.data as MeasurementData;
+    const rawData = record.data as MeasurementData;
+  const data: MeasurementData = {
+    ...rawData,
+    voucher: { ...loadSavedVoucherCustom(), ...rawData.voucher },
+  };
   const frameRef = useRef<HTMLDivElement>(null);
   const voucherRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
