@@ -20,6 +20,16 @@ import type { VoucherCustom } from "@/lib/tailor";
 import { DEFAULT_VOUCHER_CONTACT, DEFAULT_VOUCHER_FOOTER } from "./Voucher";
 
 const empty: VoucherCustom = { title: "", logo: "", contact: "", footer: "" };
+const VOUCHER_CUSTOM_KEY = "zuzu_saved_voucher_custom";
+
+export function loadSavedVoucherCustom(): Partial<VoucherCustom> {
+  try {
+    const raw = localStorage.getItem(VOUCHER_CUSTOM_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 /** Edits only this voucher's header title, logo, contact info and footer note. App branding stays locked. */
 export function VoucherCustomizeDialog({
@@ -28,7 +38,7 @@ export function VoucherCustomizeDialog({
   value,
   onSave,
 }: {
-  open: boolean;
+        open: boolean;
   onOpenChange: (v: boolean) => void;
   value: Partial<VoucherCustom> | undefined;
   onSave: (v: Partial<VoucherCustom>) => void;
@@ -38,7 +48,7 @@ export function VoucherCustomizeDialog({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) setForm({ ...empty, ...value });
+        if (open) setForm({ ...empty, ...loadSavedVoucherCustom(), ...value });
   }, [open, value]);
 
   const set = (k: keyof VoucherCustom, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -62,6 +72,9 @@ export function VoucherCustomizeDialog({
         contact: form.contact.trim(),
         footer: form.footer.trim(),
       };
+            try {
+        localStorage.setItem(VOUCHER_CUSTOM_KEY, JSON.stringify(next));
+      } catch {}
       onSave(next);
       onOpenChange(false);
       toast.success("ဘောင်ချာ အချက်အလက် သိမ်းပြီးပါပြီ");
@@ -154,7 +167,14 @@ export function VoucherCustomizeDialog({
         </div>
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
-          <Button type="button" variant="ghost" onClick={() => setForm(empty)}>
+                    <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setForm(empty);
+              try { localStorage.removeItem(VOUCHER_CUSTOM_KEY); } catch {}
+            }}
+          >
             <RotateCcw /> မူလအတိုင်း
           </Button>
           <Button type="button" variant="burgundy" className="flex-1 sm:flex-none" onClick={save} disabled={busy}>
