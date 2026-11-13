@@ -3,7 +3,12 @@ import { saveImage, downloadBlob } from "./download";
 
 /** Draws the element at its real (unscaled) size, tightly cropped to its own box. */
 export async function captureNode(node: HTMLElement, pixelRatio = 2): Promise<HTMLCanvasElement> {
-  const { toCanvas } = await import("html-to-image");
+  // The bundler may wrap the library in a `default` export; accept either shape.
+  const lib = (await import("html-to-image")) as typeof import("html-to-image") & {
+    default?: typeof import("html-to-image");
+  };
+  const toCanvas = lib.toCanvas ?? lib.default?.toCanvas;
+  if (!toCanvas) throw new Error("html-to-image failed to load");
   await document.fonts.ready;
   const width = node.offsetWidth;
   const height = node.scrollHeight;
@@ -46,7 +51,11 @@ export function fitOnA4(pxWidth: number, pxHeight: number) {
 
 export async function saveNodeAsPdf(node: HTMLElement, filename: string) {
   const canvas = await captureNode(node);
-  const { jsPDF } = await import("jspdf");
+  const pdfLib = (await import("jspdf")) as typeof import("jspdf") & { default?: unknown };
+  const jsPDF =
+    pdfLib.jsPDF ??
+    ((pdfLib.default as { jsPDF?: typeof import("jspdf").jsPDF } | undefined)?.jsPDF ??
+      (pdfLib.default as typeof import("jspdf").jsPDF));
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const { x, y, w, h } = fitOnA4(canvas.width, canvas.height);
   pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", x, y, w, h);
