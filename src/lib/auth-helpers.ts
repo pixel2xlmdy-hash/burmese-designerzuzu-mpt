@@ -5,7 +5,7 @@ import { toAsciiDigits } from "./tailor";
 export const PHONE_EMAIL_DOMAIN = "phone.myaukpyinthu.app";
 export const MIN_PASSWORD = 6;
 export const OTP_LENGTH = 6;
-export const OTP_MAX_ATTEMPTS = 5;
+export const OTP_MAX_ATTEMPTS = 6;
 export const OTP_COOLDOWN_MS = 2 * 60 * 1000;
 
 /** Normalizes a Myanmar phone number: "+95 9 7891 04156", "၀၉၇၈၉..." → "09789104156". */
