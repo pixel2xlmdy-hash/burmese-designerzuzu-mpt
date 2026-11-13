@@ -151,7 +151,7 @@ export function CostVoucherForm({
             <Input id="c-phone" type="tel" inputMode="tel" value={data.phone} onChange={(e) => set("phone", e.target.value)} className={fieldInput} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="c-design">Design Name</Label>
+            <Label htmlFor="c-design">Designer Name</Label>
             <Input id="c-design" value={data.designName} onChange={(e) => set("designName", e.target.value)} className={fieldInput} />
           </div>
           <div className="space-y-1.5">
