@@ -279,6 +279,8 @@ export function shopCostBrand(records: TailorRecord[]): CostBrand {
     designer: b.designer?.trim() || DEFAULT_COST_BRAND.designer,
     phones: b.phones?.trim() || DEFAULT_COST_BRAND.phones,
     motto: b.motto?.trim() || DEFAULT_COST_BRAND.motto,
+        title: b.title?.trim() || DEFAULT_COST_BRAND.title,
+    subtitle: b.subtitle !== undefined ? b.subtitle.trim() : DEFAULT_COST_BRAND.subtitle,
   };
 }
 
