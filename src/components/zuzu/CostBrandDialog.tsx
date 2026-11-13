@@ -58,6 +58,8 @@ export function CostBrandDialog({
         designer: form.designer.trim() || DEFAULT_COST_BRAND.designer,
         phones: form.phones.trim() || DEFAULT_COST_BRAND.phones,
         motto: form.motto.trim() || DEFAULT_COST_BRAND.motto,
+              title: (form.title ?? "").trim() || DEFAULT_COST_BRAND.title,
+      subtitle: (form.subtitle ?? "").trim(),
       });
       onOpenChange(false);
       toast.success("ဘောင်ချာ အချက်အလက် သိမ်းပြီးပါပြီ");
@@ -149,6 +151,27 @@ export function CostBrandDialog({
               value={form.motto}
               placeholder={DEFAULT_COST_BRAND.motto}
               onChange={(e) => set("motto", e.target.value)}
+              className="h-11 text-base"
+            />
+          </div>
+                    <div className="space-y-1.5">
+            <Label htmlFor="cb-title">5) Voucher Main Title (ဆိုင်ခေါင်းစီး)</Label>
+            <Input
+              id="cb-title"
+              value={form.title ?? ""}
+              placeholder={DEFAULT_COST_BRAND.title}
+              onChange={(e) => set("title", e.target.value)}
+              className="h-11 text-base"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cb-subtitle">6) Voucher Subtitle (ခေါင်းစီးခွဲ)</Label>
+            <Input
+              id="cb-subtitle"
+              value={form.subtitle ?? ""}
+              placeholder={DEFAULT_COST_BRAND.subtitle}
+              onChange={(e) => set("subtitle", e.target.value)}
               className="h-11 text-base"
             />
           </div>
