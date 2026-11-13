@@ -71,8 +71,9 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
             <BrandLogo src={brand.logo} />
             <div className="min-w-0 flex-1">
               <div className="font-display text-[24px] font-bold leading-tight text-primary">
-                မြောက်ပြင်သူ <span className="font-script text-[20px] italic text-gold">MAUK PYIN THU</span>
-              </div>
+  {brand.title || "MPT FIT TAILOR PRO"}{" "}
+  <span className="font-script text-[20px] italic text-gold">{brand.subtitle || ""}</span>
+</div>
               <div className="font-script text-[17px] italic leading-tight text-primary">Clothing Designer</div>
               <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
                 Traditional • Event • Wedding Wear
