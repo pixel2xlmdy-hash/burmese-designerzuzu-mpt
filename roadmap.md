@@ -3,11 +3,12 @@
 - [x] OTP: exactly 6 digits, 5 tries then cooldown, Burmese toasts
 - [x] Header badge: Cloud Sync Active (Online) / Local Storage (Offline)
 - [x] Back waist: 6 slots (3x2) in form + voucher
-- [ ] New app name/icon (MYAUK PYIN THU FIT TAILOR PRO) + new inner logo
-- [ ] New splash: logo, titles, welcome text, credits, Get Started
+- [ ] New app name/icon (MYAUK PYIN THU FIT TAILOR PRO) + new inner logo everywhere
+- [ ] New splash: logo, titles, tagline, စတင်အသုံးပြုမည် button / 2s auto-enter
+- [ ] Dashboard footer greeting + developer credits
 - [x] Dashboard button → Cost Voucher hub (list + new)
-- [ ] Cost Voucher form: pick customer, editable rows, add/delete rows, advance, profit, 4 signatures (Prepared By = အပ်ချုပ်သူ)
+- [ ] Cost Voucher: customer name always editable + pick existing customer
 - [x] Cost voucher photo / PDF download / print (A4, one page)
-- [ ] Cost voucher customize dialog (logo, designer, phones, motto), shop-wide + synced
+- [x] Cost voucher customize dialog (logo, designer, phones, motto)
 - [ ] Hide Lovable badge CSS
-- [ ] Tests for cost math, voucher no
+- [ ] Google Business Profile setup so local customers find the shop on Search/Maps
