@@ -95,7 +95,7 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
                 ["Date", data.date],
                 ["Customer Name", data.customerName],
                 ["Phone", data.phone],
-                ["Design Name", data.designName],
+                ["Designer Name", data.designName],
                 ["Garment Type", data.garmentType],
               ] as const
             ).map(([label, value]) => (
