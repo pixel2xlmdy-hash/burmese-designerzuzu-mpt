@@ -2,10 +2,51 @@
 import { saveImage, downloadBlob } from "./download";
 
 /** Draws the element at its real (unscaled) size, tightly cropped to its own box, as a PNG blob. */
+async function inlineAllImages(root: HTMLElement): Promise<() => void> {
+  const imgs = Array.from(root.querySelectorAll("img"));
+  const restores: Array<() => void> = [];
+
+  await Promise.all(
+    imgs.map(async (img) => {
+      try {
+        const origSrc = img.getAttribute("src") || "";
+        if (!origSrc) return;
+        if (!img.complete || img.naturalWidth === 0) {
+          await new Promise<void>((res) => {
+            img.onload = () => res();
+            img.onerror = () => res();
+          });
+        }
+        if (img.naturalWidth > 0 && !origSrc.startsWith("data:")) {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL("image/png");
+            img.src = dataUrl;
+            restores.push(() => {
+              img.src = origSrc;
+            });
+          }
+        }
+        if (img.decode) await img.decode().catch(() => {});
+      } catch {
+        // ignore
+      }
+    })
+  );
+
+  return () => restores.forEach((fn) => fn());
+}
+
 export async function captureNode(node: HTMLElement, pixelRatio = 2): Promise<Blob> {
-  // Only `toBlob` is used from html-to-image across the app, so the dev bundler always exposes it.
   const { toBlob } = await import("html-to-image");
   await document.fonts.ready;
+  const restoreImages = await inlineAllImages(node);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
   const width = node.offsetWidth;
   const height = node.scrollHeight;
   const opts = {
@@ -19,13 +60,18 @@ export async function captureNode(node: HTMLElement, pixelRatio = 2): Promise<Bl
   };
   let blob: Blob | null;
   try {
-    blob = await toBlob(node, opts);
-  } catch {
-    blob = await toBlob(node, { ...opts, skipFonts: true });
+    try {
+      blob = await toBlob(node, opts);
+    } catch {
+      blob = await toBlob(node, { ...opts, skipFonts: true });
+    }
+  } finally {
+    restoreImages();
   }
-  if (!blob) throw new Error("empty image");
+  if (!blob) throw new Error("Empty image");
   return blob;
 }
+
 
 export async function saveNodeAsPhoto(node: HTMLElement, filename: string) {
   await saveImage(await captureNode(node), filename);
