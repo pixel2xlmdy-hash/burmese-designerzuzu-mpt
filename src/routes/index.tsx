@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { NotebookPen, Plus, Ruler, X } from "lucide-react";
+import { NotebookPen, Plus, Receipt, Ruler, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppHeader } from "@/components/zuzu/AppHeader";
+import { CostVoucherForm } from "@/components/zuzu/CostVoucherForm";
+import { CostVoucherList } from "@/components/zuzu/CostVoucherList";
+import { CostVoucherView } from "@/components/zuzu/CostVoucherView";
 import { FooterCards } from "@/components/zuzu/FooterCards";
 import { MeasurementForm } from "@/components/zuzu/MeasurementForm";
 import { NoteForm } from "@/components/zuzu/NoteForm";
@@ -45,7 +48,10 @@ type View =
   | { type: "editMeasurement"; id: string | null }
   | { type: "viewMeasurement"; id: string }
   | { type: "editNote"; id: string | null }
-  | { type: "viewNote"; id: string };
+  | { type: "viewNote"; id: string }
+  | { type: "costList" }
+  | { type: "editCost"; id: string | null }
+  | { type: "viewCost"; id: string };
 
 function Index() {
   const store = useStore();
@@ -77,6 +83,7 @@ function Index() {
     () => ({
       measurement: live.filter((r) => r.kind === "measurement").length,
       note: live.filter((r) => r.kind === "note").length,
+      cost: live.filter((r) => r.kind === "cost").length,
     }),
     [live],
   );
@@ -89,7 +96,33 @@ function Index() {
 
   let body: ReactNode;
   let isList = false;
-  if (view.type === "editMeasurement") {
+  if (view.type === "costList") {
+    body = (
+      <CostVoucherList
+        onBack={() => go({ type: "list" })}
+        onNew={() => go({ type: "editCost", id: null })}
+        onOpen={(id) => go({ type: "viewCost", id })}
+      />
+    );
+  } else if (view.type === "editCost") {
+    body = (
+      <CostVoucherForm
+        key={view.id ?? "new"}
+        record={current ?? null}
+        onDone={(saved) =>
+          go(saved ? { type: "viewCost", id: saved.id } : view.id ? { type: "viewCost", id: view.id } : { type: "costList" })
+        }
+      />
+    );
+  } else if (view.type === "viewCost" && current && !current.deleted) {
+    body = (
+      <CostVoucherView
+        record={current}
+        onBack={() => go({ type: "costList" })}
+        onEdit={() => go({ type: "editCost", id: current.id })}
+      />
+    );
+  } else if (view.type === "editMeasurement") {
     body = (
       <MeasurementForm
         key={view.id ?? "new"}
@@ -146,6 +179,13 @@ function Index() {
           onClick={() => go({ type: "editMeasurement", id: null })}
         >
           <Plus className="!size-5" /> တိုင်းတာမှု အသစ် (New Measurement)
+        </Button>
+
+        <Button variant="champagne" size="xl" className="w-full" onClick={() => go({ type: "costList" })}>
+          <Receipt className="!size-5" /> 🧾 ပြေစာ / ဘောင်ချာ စလစ် ထုတ်မည်
+          {counts.cost > 0 && (
+            <span className="rounded-full bg-card px-2 text-xs text-primary">{counts.cost}</span>
+          )}
         </Button>
 
         <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
