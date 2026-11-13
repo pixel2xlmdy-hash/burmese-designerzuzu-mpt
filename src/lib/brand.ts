@@ -1,4 +1,4 @@
-export const LOGO_URL = "https://i.ibb.co/BK7KvsYp/image.png";
+export const LOGO_URL = "/icon-512.png";
 export const LOGO_FALLBACK = "/icon-512.png";
 
 export const BRAND_TITLE = "MPT FIT TAILOR PRO";
