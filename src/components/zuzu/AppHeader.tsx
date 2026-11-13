@@ -17,7 +17,7 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
         <Logo className="h-12 w-12 shrink-0 gold-ring" />
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-bold leading-tight text-primary">{BRAND_TITLE}</h1>
+          <h1 className="font-display text-2xl font-bold leading-tight text-primary">MPT FIT TAILOR PRO</h1>
           <p className="font-script text-base italic leading-none tracking-wide text-gold">
             {BRAND_SUBTITLE}
           </p>
