@@ -42,6 +42,16 @@ function makeSignature(payload: string): string {
   return hash.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
 }
 
+// User Password မေ့လျှင် Admin ထုတ်ပေးမည့် ၂၄ နာရီသုံး Reset Code
+function generateResetCode(targetIdentifier: string): string {
+  const cleanTarget = targetIdentifier.trim().toLowerCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const expHex = Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 60000).toString(36).toUpperCase();
+  const body = `${rand}-${expHex}`;
+  const sig = makeSignature(`RST:${cleanTarget}:${body}`);
+  return `RST-${body}-${sig}`;
+}
+
 // Uninstall လုပ်ပြီး ပြန်သွင်းလည်း မပြောင်းလဲသော Hardware + Email Hybrid ID
 function getHybridDeviceId(userEmail: string): string {
   if (userEmail) {
@@ -101,6 +111,7 @@ export function AdBanner() {
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("1Y");
   const [adminStep, setAdminStep] = useState<"none" | "login" | "generator">("none");
+  const [adminTab, setAdminTab] = useState<"vip" | "reset">("vip");
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
   const [showAdminPass, setShowAdminPass] = useState(false);
@@ -108,6 +119,9 @@ export function AdBanner() {
   const [activeGenTag, setActiveGenTag] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [resetTargetInput, setResetTargetInput] = useState("");
+  const [generatedResetCode, setGeneratedResetCode] = useState("");
+  const [copiedReset, setCopiedReset] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -129,7 +143,6 @@ export function AdBanner() {
     };
   }, []);
 
-  // LocalStorage + Cloud Database မှ VIP သက်တမ်း စစ်ဆေးခြင်း
   useEffect(() => {
     const checkVipStatus = async () => {
       try {
@@ -145,7 +158,6 @@ export function AdBanner() {
           }
         }
 
-        // Uninstall လုပ်ပြီး ပြန်သွင်းထားသူဖြစ်ပါက Cloud Database မှ အလိုအလျောက် ပြန်ဆွဲတင်ပေးမည်
         const currentDeviceId = getHybridDeviceId(userEmail);
         const { data: rows } = await (supabase as any)
           .from("vip_devices")
@@ -229,7 +241,6 @@ export function AdBanner() {
       return;
     }
 
-    // 1-Device / 1-Account Lock စစ်ဆေးခြင်း
     setLoading(true);
     setError("");
     try {
@@ -321,19 +332,29 @@ export function AdBanner() {
     setCopied(false);
   };
 
-  const handleCopyCode = async () => {
-    if (!generatedCode) return;
+  const copyTextSafely = async (txt: string) => {
     try {
-      await navigator.clipboard.writeText(generatedCode);
+      await navigator.clipboard.writeText(txt);
     } catch {
       const el = document.createElement("textarea");
-      el.value = generatedCode;
+      el.value = txt;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
     }
+  };
+
+  const handleCopyCode = async () => {
+    if (!generatedCode) return;
+    await copyTextSafely(generatedCode);
     setCopied(true);
+  };
+
+  const handleCopyResetCode = async () => {
+    if (!generatedResetCode) return;
+    await copyTextSafely(generatedResetCode);
+    setCopiedReset(true);
   };
 
   const resetModal = () => {
@@ -403,7 +424,7 @@ export function AdBanner() {
                 {adminStep === "login"
                   ? "Admin အတည်ပြုရန်"
                   : adminStep === "generator"
-                  ? "Admin VIP Code ထုတ်ရန်"
+                  ? "Admin Code ထုတ်ရန်"
                   : "VIP Plan များ (ကြော်ငြာမပါ)"}
               </h3>
               <button
@@ -432,7 +453,7 @@ export function AdBanner() {
                 <div className="relative flex items-center">
                   <input
                     type={showAdminPass ? "text" : "password"}
-                                        autoComplete="off"
+                    autoComplete="off"
                     value={adminPassInput}
                     onChange={(e) => setAdminPassInput(e.target.value)}
                     placeholder="Admin Password"
@@ -470,47 +491,112 @@ export function AdBanner() {
               </div>
             ) : adminStep === "generator" ? (
               <div className="mt-3 space-y-2.5 text-xs">
-                <p className="text-neutral-600">
-                  ဝယ်ယူသူအတွက် သက်တမ်းအလိုက် Random VIP Code အသစ် ထုတ်ယူပါ-
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { tag: "1M", days: 30, label: "+ 1 Month (၃၀ ရက်)" },
-                    { tag: "3M", days: 90, label: "+ 3 Months (၉၀ ရက်)" },
-                    { tag: "6M", days: 180, label: "+ 6 Months (၁၈၀ ရက်)" },
-                    { tag: "1Y", days: 365, label: "+ 1 Year (၃၆၅ ရက်)" },
-                  ].map((item) => {
-                    const isSelected = activeGenTag === item.tag;
-                    return (
-                      <button
-                        key={item.tag}
-                        type="button"
-                        onClick={() => handleCreateCode(item.tag, item.days)}
-                        className={`rounded-xl py-2 transition ${
-                          isSelected
-                            ? "border-2 border-amber-400 bg-amber-50 font-bold text-amber-900 shadow-sm"
-                            : "border border-neutral-300 bg-neutral-100 font-semibold text-neutral-800 hover:bg-neutral-200"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-neutral-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setAdminTab("vip")}
+                    className={`rounded-lg py-1.5 font-bold transition ${
+                      adminTab === "vip" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"
+                    }`}
+                  >
+                    👑 VIP Code ထုတ်ရန်
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminTab("reset")}
+                    className={`rounded-lg py-1.5 font-bold transition ${
+                      adminTab === "reset" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-600"
+                    }`}
+                  >
+                    🔑 Pw Reset Code
+                  </button>
                 </div>
 
-                {generatedCode && (
-                  <div className="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/50 p-3">
-                    <div className="select-all break-all font-mono text-xs font-bold text-neutral-900">
-                      {generatedCode}
+                {adminTab === "vip" ? (
+                  <>
+                    <p className="text-neutral-600">
+                      ဝယ်ယူသူအတွက် သက်တမ်းအလိုက် Random VIP Code အသစ် ထုတ်ယူပါ-
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { tag: "1M", days: 30, label: "+ 1 Month (၃၀ ရက်)" },
+                        { tag: "3M", days: 90, label: "+ 3 Months (၉၀ ရက်)" },
+                        { tag: "6M", days: 180, label: "+ 6 Months (၁၈၀ ရက်)" },
+                        { tag: "1Y", days: 365, label: "+ 1 Year (၃၆၅ ရက်)" },
+                      ].map((item) => {
+                        const isSelected = activeGenTag === item.tag;
+                        return (
+                          <button
+                            key={item.tag}
+                            type="button"
+                            onClick={() => handleCreateCode(item.tag, item.days)}
+                            className={`rounded-xl py-2 transition ${
+                              isSelected
+                                ? "border-2 border-amber-400 bg-amber-50 font-bold text-amber-900 shadow-sm"
+                                : "border border-neutral-300 bg-neutral-100 font-semibold text-neutral-800 hover:bg-neutral-200"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
                     </div>
+
+                    {generatedCode && (
+                      <div className="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/50 p-3">
+                        <div className="select-all break-all font-mono text-xs font-bold text-neutral-900">
+                          {generatedCode}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyCode}
+                          className="mt-2.5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-black text-xs font-semibold text-white shadow-sm active:scale-95"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          {copied ? "Copy ကူးပြီးပါပြီ ✓" : "Code ကို Copy ကူးမည်"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-neutral-600">
+                      Password မေ့သွားသော User ၏ Email သို့မဟုတ် ဖုန်းနံပါတ်ကို ထည့်ပြီး Reset Code ထုတ်ပေးပါ-
+                    </p>
+                    <input
+                      type="text"
+                      value={resetTargetInput}
+                      onChange={(e) => setResetTargetInput(e.target.value)}
+                      placeholder="User Email သို့မဟုတ် 09xxxxxxxx"
+                      className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-xs text-neutral-900"
+                    />
                     <button
                       type="button"
-                      onClick={handleCopyCode}
-                      className="mt-2.5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-black text-xs font-semibold text-white shadow-sm active:scale-95"
+                      onClick={() => {
+                        if (!resetTargetInput.trim()) return;
+                        setGeneratedResetCode(generateResetCode(resetTargetInput));
+                        setCopiedReset(false);
+                      }}
+                      style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
+                      className="flex h-9 w-full items-center justify-center rounded-xl text-xs font-bold"
                     >
-                      <Copy className="h-3.5 w-3.5" />
-                      {copied ? "Copy ကူးပြီးပါပြီ ✓" : "Code ကို Copy ကူးမည်"}
+                      Reset Code ထုတ်မည် (၂၄ နာရီသုံး)
                     </button>
+                    {generatedResetCode && (
+                      <div className="rounded-xl border-2 border-amber-400 bg-amber-50/50 p-3">
+                        <div className="select-all break-all font-mono text-xs font-bold text-neutral-900">
+                          {generatedResetCode}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyResetCode}
+                          className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-black text-xs font-semibold text-white"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          {copiedReset ? "Copy ကူးပြီးပါပြီ ✓" : "Reset Code ကို Copy ကူးမည်"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
