@@ -113,3 +113,44 @@ export function AdBanner() {
                 </span>
                 <span className="font-bold text-burgundy">36,000 Ks</span>
               </div>
+            </div>
+
+            <a
+              href={TIKTOK_CONTACT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-black text-xs font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              <span>TikTok မှတစ်ဆင့် ဝယ်ယူဆက်သွယ်ရန်</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+
+            <div className="mt-3 border-t border-border/60 pt-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                TikTok မှ VIP Code ရရှိပြီးပါက အောက်တွင် ရိုက်ထည့်၍ ဖွင့်ပါ-
+              </p>
+
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="VIP Code ထည့်ပါ (ဥပမာ - MPT1M2026)"
+                className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase"
+              />
+
+              {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+
+              <button
+                type="button"
+                onClick={handleUnlockVip}
+                className="mt-3 h-10 w-full rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+              >
+                VIP အတည်ပြုမည်
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
