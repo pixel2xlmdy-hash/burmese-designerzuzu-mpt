@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Upload,
   UserPlus,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,23 +45,45 @@ import {
 } from "@/lib/auth-helpers";
 import { cn } from "@/lib/utils";
 import { downloadJson, todayForFile } from "@/lib/download";
+import { supabase } from "@/integrations/supabase/client";
 
-function errorText(e: unknown) {
+const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
+
+function makeSignature(payload: string): string {
+  let hash = 5381;
+  const full = `${SIGN_SALT}:${payload}`;
+  for (let i = 0; i < full.length; i++) {
+    hash = ((hash << 5) + hash + full.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
+}
+
+function verifyAdminResetCode(rawCode: string, targetIdentifier: string): boolean {
+  const parts = rawCode.trim().toUpperCase().split("-");
+  if (parts.length !== 4 || parts[0] !== "RST") return false;
+  const [, rand, expHex, sig] = parts;
+  const expMinutes = parseInt(expHex, 36);
+  if (isNaN(expMinutes) || Date.now() >= expMinutes * 60000) return false;
+  const cleanTarget = targetIdentifier.trim().toLowerCase();
+  return makeSignature(`RST:${cleanTarget}:${rand}-${expHex}`) === sig;
+}
+
+function errorText(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
-  if (/otp locked/i.test(msg)) return "Code အကြိမ်များစွာ မှားသွားပါသဖြင့် ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ။";
+  if (/otp_locked/i.test(msg)) return "Code အကြိမ်များစွာ မှားယွင်းသဖြင့် ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ";
   if (/invalid identity/i.test(msg)) return "Email သို့မဟုတ် ဖုန်းနံပါတ် မှန်ကန်စွာ ထည့်ပါ";
-  if (/invalid login credentials/i.test(msg)) return "Email/ဖုန်း သို့မဟုတ် Password မှားနေပါသည်";
-  if (/already registered|already exists/i.test(msg)) return "ဤ Email/ဖုန်းဖြင့် အကောင့် ရှိပြီးသားပါ — “ဝင်မည်” ကို နှိပ်ပါ";
+  if (/invalid login credentials/i.test(msg)) return "အကောင့် သို့မဟုတ် Password မှားနေပါသည်";
+  if (/already registered|already exists/i.test(msg)) return "ဤ Email/ဖုန်းဖြင့် အကောင့် ရှိပြီးသားပါ — ဝင်မည် ကို နှိပ်ပါ";
   if (/email not confirmed/i.test(msg)) return "Email ကို အတည်ပြုရန် လိုပါသေးသည် — 6-Digit Code ဖြင့် ဝင်ပါ";
-  if (/weak|pwned|known to be|easy to guess/i.test(msg)) return "ဤ Password သည် လွယ်လွန်းပါသည်။ ပိုခက်သော Password ရွေးပါ။";
+  if (/weak|pwned|known to be|easy to guess/i.test(msg)) return "Password သည် လွယ်ကူလွန်းပါသည် ပိုခက်သော Password ရွေးပါ";
   if (/password should be|at least 6/i.test(msg)) return "Password အနည်းဆုံး ၆ လုံး ထည့်ပါ";
-  if (/rate limit|security purposes|too many/i.test(msg)) return "ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ။";
-  if (/expired|invalid|token/i.test(msg)) return "Code မှားနေသည် သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။";
+  if (/rate limit|security purposes|too many/i.test(msg)) return "ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ";
+  if (/expired|invalid|token/i.test(msg)) return "Code မှားနေသည် သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ";
   if (/failed to fetch|network/i.test(msg)) return "အင်တာနက် ချိတ်ဆက်မှု မရှိပါ";
   return msg;
 }
 
-type Method = "password" | "code";
+type AuthScreen = "signin" | "register" | "forgot" | "code";
 
 export function SettingsSheet({
   open,
@@ -71,23 +94,45 @@ export function SettingsSheet({
   onOpenChange: (v: boolean) => void;
   store: StoreState;
 }) {
-  const [method, setMethod] = useState<Method>("password");
+  const [screen, setScreen] = useState<AuthScreen>("signin");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+
+  // Register fields
+  const [regUsername, setRegUsername] = useState("");
+  const [regIdentifier, setRegIdentifier] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPw, setRegConfirmPw] = useState("");
+  const [regPin, setRegPin] = useState("");
+  const [showRegPw, setShowRegPw] = useState(false);
+
+  // Forgot Password fields
+  const [forgotId, setForgotId] = useState("");
+  const [forgotSecret, setForgotSecret] = useState(""); // PIN 4 လုံး သို့မဟုတ် Admin RST-... Code
+  const [forgotNewPw, setForgotNewPw] = useState("");
+  const [forgotConfirmPw, setForgotConfirmPw] = useState("");
+
+  // Email 6-Digit OTP fields
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState<"signin" | "signup" | "send" | "verify" | "setpw" | null>(null);
   const [lockLeft, setLockLeft] = useState(0);
-  const [newPw, setNewPw] = useState("");
+
+  // Change Password (Signed-in) fields
   const [showSetPw, setShowSetPw] = useState(false);
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmNewPw, setConfirmNewPw] = useState("");
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const singleRef = useRef<HTMLInputElement>(null);
 
   const liveCount = Object.values(store.records).filter((r) => !r.deleted).length;
 
-  // Count down the code cooldown while it is running.
   useEffect(() => {
     if (!open) return;
     const tick = () => setLockLeft(otpLockRemaining(readOtpGate(), Date.now()));
@@ -101,10 +146,11 @@ export function SettingsSheet({
     toast.error("အင်တာနက် ချိတ်ဆက်ပြီးမှ ပြန်ကြိုးစားပါ");
     return false;
   };
-
-  const passwordAction = async (kind: "signin" | "signup") => {
-    if (!loginIdentity(identifier)) {
-      toast.error("Email သို့မဟုတ် ဖုန်းနံပါတ် မှန်ကန်စွာ ထည့်ပါ");
+  // 1. Login (User Name / Email / Phone + Password)
+  const handleSignIn = async () => {
+    const rawId = identifier.trim();
+    if (!rawId) {
+      toast.error("User Name / Email သို့မဟုတ် ဖုန်းနံပါတ် ထည့်ပါ");
       return;
     }
     if (password.length < MIN_PASSWORD) {
@@ -112,13 +158,26 @@ export function SettingsSheet({
       return;
     }
     if (!needOnline()) return;
-    setBusy(kind);
+
+    setBusy("signin");
     try {
-      const n = kind === "signin" ? await passwordSignIn(identifier, password) : await passwordSignUp(identifier, password);
-      if (n === null) {
-        toast.success("အကောင့် ဖွင့်ပြီးပါပြီ။ Email ကို အတည်ပြုပြီးမှ ဝင်ပါ။");
-        return;
+      let loginTarget = rawId;
+      // User Name ဖြင့် ဝင်ရောက်ခြင်းဖြစ်ပါက user_profiles မှ အကောင့်ရှာမည်
+      if (!loginIdentity(rawId)) {
+        const { data: prof } = await (supabase as any)
+          .from("user_profiles")
+          .select("identifier")
+          .ilike("username", rawId)
+          .maybeSingle();
+        if (!prof?.identifier) {
+          toast.error("ဤ User Name ဖြင့် အကောင့် မတွေ့ပါ");
+          setBusy(null);
+          return;
+        }
+        loginTarget = prof.identifier;
       }
+
+      const n = await passwordSignIn(loginTarget, password);
       setPassword("");
       toast.success(`Cloud Sync ချိတ်ဆက်ပြီးပါပြီ — မှတ်တမ်း ${n} ခု`);
     } catch (err) {
@@ -128,9 +187,199 @@ export function SettingsSheet({
     }
   };
 
+  // 2. Register (User Name + Mail/Ph + Pw + Confirm Pw + Recovery PIN 4 လုံး)
+  const handleRegister = async () => {
+    const uName = regUsername.trim();
+    const idVal = regIdentifier.trim();
+    const pinVal = regPin.replace(/\D/g, "");
+
+    if (uName.length < 2) {
+      toast.error("User Name အနည်းဆုံး ၂ လုံး ထည့်ပါ");
+      return;
+    }
+    const parsed = loginIdentity(idVal);
+    if (!parsed) {
+      toast.error("Email သို့မဟုတ် ဖုန်းနံပါတ် မှန်ကန်စွာ ထည့်ပါ");
+      return;
+    }
+    if (regPassword.length < MIN_PASSWORD) {
+      toast.error("Password အနည်းဆုံး ၆ လုံး ထည့်ပါ");
+      return;
+    }
+    if (regPassword !== regConfirmPw) {
+      toast.error("Password ၂ ခါ ရိုက်ထည့်တာ မတူညီပါ (ပြန်စစ်ပါ)");
+      return;
+    }
+    if (pinVal.length !== 4) {
+      toast.error("Password မေ့လျှင် ပြန်ယူရန် PIN ဂဏန်း ၄ လုံး ထည့်ပါ");
+      return;
+    }
+    if (!needOnline()) return;
+
+    setBusy("signup");
+    try {
+      // User Name ရှိပြီးသား ဟုတ်/မဟုတ် စစ်မည်
+      const { data: dupUser } = await (supabase as any)
+        .from("user_profiles")
+        .select("username")
+        .ilike("username", uName)
+        .maybeSingle();
+      if (dupUser) {
+        toast.error("ဤ User Name ကို အခြားသူ အသုံးပြုပြီးဖြစ်ပါသည်");
+        setBusy(null);
+        return;
+      }
+
+      const n = await passwordSignUp(idVal, regPassword);
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const uid = sessionRes?.session?.user?.id;
+      if (uid) {
+        await (supabase as any).from("user_profiles").upsert({
+          user_id: uid,
+          username: uName,
+          identifier: idVal.toLowerCase(),
+          auth_email: parsed.email.toLowerCase(),
+          recovery_pin: pinVal,
+        });
+      }
+
+      setRegPassword("");
+      setRegConfirmPw("");
+      setRegPin("");
+      setScreen("signin");
+      if (n === null) {
+        toast.success("အကောင့် ဖွင့်ပြီးပါပြီ! Email ကို အတည်ပြုပြီးမှ ဝင်ပါ");
+      } else {
+        toast.success(`အကောင့်သစ် ဖွင့်ပြီးပါပြီ — မှတ်တမ်း ${n} ခု Sync လုပ်ပြီးပါပြီ`);
+      }
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 3. Forgot Password (PIN 4 လုံး သို့မဟုတ် Admin Reset Code ဖြင့် ပြန်ယူခြင်း)
+  const handleForgotReset = async () => {
+    const rawId = forgotId.trim();
+    const secret = forgotSecret.trim();
+
+    if (!rawId) {
+      toast.error("User Name / Email သို့မဟုတ် ဖုန်းနံပါတ် ထည့်ပါ");
+      return;
+    }
+    if (!secret) {
+      toast.error("PIN ၄ လုံး သို့မဟုတ် Admin Reset Code ထည့်ပါ");
+      return;
+    }
+    if (forgotNewPw.length < MIN_PASSWORD) {
+      toast.error("Password အသစ် အနည်းဆုံး ၆ လုံး ထည့်ပါ");
+      return;
+    }
+    if (forgotNewPw !== forgotConfirmPw) {
+      toast.error("Password အသစ် ၂ ခါ ထည့်တာ မတူညီပါ");
+      return;
+    }
+    if (!needOnline()) return;
+
+    setBusy("forgot");
+    try {
+      const { data: prof } = await (supabase as any)
+        .from("user_profiles")
+        .select("*")
+        .or(`username.ilike.${rawId},identifier.ilike.${rawId}`)
+        .maybeSingle();
+
+      const parsed = loginIdentity(rawId);
+      const targetAuthEmail = prof?.auth_email || parsed?.email;
+      const targetIdentifier = prof?.identifier || rawId.toLowerCase();
+
+      if (!targetAuthEmail) {
+        toast.error("အကောင့် အချက်အလက် ရှာမတွေ့ပါ");
+        setBusy(null);
+        return;
+      }
+
+      const isPinValid = prof?.recovery_pin && prof.recovery_pin === secret.replace(/\D/g, "");
+      const isAdminCodeValid =
+        verifyAdminResetCode(secret, targetIdentifier) || verifyAdminResetCode(secret, rawId);
+
+      if (!isPinValid && !isAdminCodeValid) {
+        toast.error("PIN ၄ လုံး သို့မဟုတ် Admin Reset Code မှားယွင်းနေပါသည်");
+        setBusy(null);
+        return;
+      }
+
+      const { error: rpcErr } = await (supabase as any).rpc("admin_reset_user_password", {
+        target_auth_email: targetAuthEmail,
+        new_password: forgotNewPw,
+      });
+
+      if (rpcErr) {
+        toast.error("Password ပြန်သတ်မှတ်မရပါ — အချက်အလက် ပြန်စစ်ပါ");
+        setBusy(null);
+        return;
+      }
+
+      toast.success("Password အသစ် ပြောင်းလဲပြီးပါပြီ — ယခု ဝင်ရောက်နိုင်ပါပြီ");
+      setIdentifier(rawId);
+      setForgotSecret("");
+      setForgotNewPw("");
+      setForgotConfirmPw("");
+      setScreen("signin");
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 4. Change Password (Signed-in: Password အဟောင်း + Password အသစ် ၂ ခါ)
+  const savePassword = async () => {
+    if (!oldPw) {
+      toast.error("လက်ရှိ Password အဟောင်းကို အရင်ထည့်ပါ");
+      return;
+    }
+    if (newPw.length < MIN_PASSWORD) {
+      toast.error("Password အသစ် အနည်းဆုံး ၆ လုံး ထည့်ပါ");
+      return;
+    }
+    if (newPw !== confirmNewPw) {
+      toast.error("Password အသစ် ၂ ခါ ရိုက်ထည့်တာ မတူညီပါ");
+      return;
+    }
+    if (!needOnline()) return;
+
+    setBusy("setpw");
+    try {
+      if (store.email) {
+        const { error: checkErr } = await supabase.auth.signInWithPassword({
+          email: store.email,
+          password: oldPw,
+        });
+        if (checkErr) {
+          toast.error("Password အဟောင်း မှားယွင်းနေပါသည်");
+          setBusy(null);
+          return;
+        }
+      }
+
+      await setAccountPassword(newPw);
+      setOldPw("");
+      setNewPw("");
+      setConfirmNewPw("");
+      setShowSetPw(false);
+      toast.success("Password အသစ် ပြောင်းလဲပြီးပါပြီ");
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const send = async () => {
     const e = email.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(e)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
       toast.error("Email လိပ်စာ မှန်ကန်စွာ ထည့်ပါ");
       return;
     }
@@ -154,7 +403,7 @@ export function SettingsSheet({
       return;
     }
     if (lockLeft > 0) {
-      toast.error(`Code အကြိမ်များစွာ မှားသွားပါသည်။ ${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ။`);
+      toast.error(`Code အကြိမ်များစွာ မှားထားပါသည် ${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ`);
       return;
     }
     setBusy("verify");
@@ -168,30 +417,12 @@ export function SettingsSheet({
       setCode("");
       if (gate && gate.lockedUntil > Date.now()) {
         setLockLeft(gate.lockedUntil - Date.now());
-        toast.error("Code ၅ ကြိမ် မှားသွားပါသည်။ ၂ မိနစ် စောင့်ပြီးမှ ထပ်ကြိုးစားပါ။");
+        toast.error("Code ၅ ကြိမ် မှားထားပါသည် ၂ မိနစ် စောင့်ပြီးမှ ထပ်ကြိုးစားပါ");
       } else if (gate) {
-        toast.error(`Code မှားနေပါသည်။ ကျန်ရှိသော အကြိမ် — ${OTP_MAX_ATTEMPTS - gate.failures}`);
+        toast.error(`Code မှားနေပါသည် ကျန်ရှိသော အကြိမ် — ${OTP_MAX_ATTEMPTS - gate.failures}`);
       } else {
         toast.error(errorText(err));
       }
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const savePassword = async () => {
-    if (newPw.length < MIN_PASSWORD) {
-      toast.error("Password အနည်းဆုံး ၆ လုံး ထည့်ပါ");
-      return;
-    }
-    setBusy("setpw");
-    try {
-      await setAccountPassword(newPw);
-      setNewPw("");
-      setShowSetPw(false);
-      toast.success("Password သတ်မှတ်ပြီးပါပြီ — အခြားဖုန်းများတွင် Password ဖြင့် ဝင်နိုင်ပါပြီ");
-    } catch (err) {
-      toast.error(errorText(err));
     } finally {
       setBusy(null);
     }
@@ -211,11 +442,11 @@ export function SettingsSheet({
       }
       toast.success(
         single
-          ? `Customer မှတ်တမ်း (${found}) ခု ထည့်သွင်းပြီးပါပြီ။ အခြား Customer များ မပျက်ပါ။`
-          : `Customer မှတ်တမ်းအားလုံး (${found}) ခု အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။`,
+          ? `Customer မှတ်တမ်း ${found} ခု ထည့်သွင်းပြီးပါပြီ အခြား Customer များ မပျက်ပါ`
+          : `Customer မှတ်တမ်းအားလုံး ${found} ခု အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ`,
       );
     } catch {
-      toast.error("Backup ဖိုင် မမှန်ကန်ပါ");
+      toast.error("Backup ဖိုင် ဖတ်မရပါ");
     }
   };
 
@@ -237,11 +468,11 @@ export function SettingsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto bg-background sm:max-w-md">
         <SheetHeader>
-          <SheetTitle className="font-display text-xl text-primary">⚙️ Settings</SheetTitle>
+          <SheetTitle className="font-display text-xl text-primary">Settings</SheetTitle>
           <SheetDescription>မှတ်တမ်း {liveCount} ခု ဤဖုန်းတွင် သိမ်းထားပါသည်</SheetDescription>
         </SheetHeader>
 
-        <section className="mt-6 space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+        <section className="mt-6 space-y-4 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <h3 className="flex items-center gap-2 font-display text-base font-bold text-primary">
             <CloudUpload className="h-5 w-5" /> Cloud Sync (ဖုန်းအားလုံး ချိတ်ဆက်ရန်)
           </h3>
@@ -284,20 +515,69 @@ export function SettingsSheet({
                   <LogOut /> Disconnect
                 </Button>
               </div>
+
               {showSetPw ? (
-                <div className="space-y-2 border-t border-border pt-3">
-                  <Label htmlFor="new-pw">Password အသစ် (အနည်းဆုံး ၆ လုံး)</Label>
-                  <Input
-                    id="new-pw"
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPw}
-                    onChange={(e) => setNewPw(e.target.value)}
-                    className="h-11 text-base"
-                  />
-                  <Button variant="champagne" className="w-full" onClick={savePassword} disabled={busy !== null}>
-                    {busy === "setpw" ? <Loader2 className="animate-spin" /> : <KeyRound />} Password သိမ်းမည်
-                  </Button>
+                <div className="space-y-2.5 border-t border-border pt-3">
+                  <div className="text-xs font-bold text-primary">Password ပြောင်းလဲရန်</div>
+                  <div className="space-y-1">
+                    <Label htmlFor="old-pw" className="text-xs">Password အဟောင်း (Current Password)</Label>
+                    <div className="relative">
+                      <Input
+                        id="old-pw"
+                        type={showOldPw ? "text" : "password"}
+                        value={oldPw}
+                        onChange={(e) => setOldPw(e.target.value)}
+                        placeholder="လက်ရှိ Password ထည့်ပါ"
+                        className="h-10 pr-10 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPw((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
+                      >
+                        {showOldPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-pw" className="text-xs">Password အသစ် (အနည်းဆုံး ၆ လုံး)</Label>
+                    <div className="relative">
+                      <Input
+                        id="new-pw"
+                        type={showNewPw ? "text" : "password"}
+                        value={newPw}
+                        onChange={(e) => setNewPw(e.target.value)}
+                        placeholder="Password အသစ် ထည့်ပါ"
+                        className="h-10 pr-10 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPw((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
+                      >
+                        {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="confirm-new-pw" className="text-xs">Password အသစ် ထပ်မံအတည်ပြုပါ</Label>
+                    <Input
+                      id="confirm-new-pw"
+                      type={showNewPw ? "text" : "password"}
+                      value={confirmNewPw}
+                      onChange={(e) => setConfirmNewPw(e.target.value)}
+                      placeholder="Password အသစ် ထပ်ရိုက်ပါ"
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="flex-1" onClick={() => { setShowSetPw(false); setOldPw(""); setNewPw(""); setConfirmNewPw(""); }}>
+                      ပယ်ဖျက်မည်
+                    </Button>
+                    <Button variant="champagne" className="flex-1" onClick={savePassword} disabled={busy !== null}>
+                      {busy === "setpw" ? <Loader2 className="animate-spin" /> : <KeyRound />} Password ပြောင်းမည်
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -305,28 +585,27 @@ export function SettingsSheet({
                   onClick={() => setShowSetPw(true)}
                   className="flex items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  <KeyRound className="h-3.5 w-3.5" /> Password သတ်မှတ် / ပြောင်းမည်
+                  <KeyRound className="h-3.5 w-3.5" /> Password ပြောင်းလဲရန် (Change Password)
                 </button>
               )}
             </div>
           ) : (
             <div className="space-y-3">
-              <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
-                {(
-                  [
-                    { k: "password", label: "🔑 Password ဖြင့်" },
-                    { k: "code", label: "✉️ 6-Digit Code" },
-                  ] as const
-                ).map(({ k, label }) => (
+              <div role="tablist" className="grid grid-cols-3 gap-1 rounded-full bg-secondary p-1">
+                {[
+                  { k: "signin" as const, label: "🔑 ဝင်မည်" },
+                  { k: "register" as const, label: "📝 အကောင့်သစ်" },
+                  { k: "code" as const, label: "✉️ 6-Digit" },
+                ].map(({ k, label }) => (
                   <button
                     key={k}
                     type="button"
                     role="tab"
-                    aria-selected={method === k}
-                    onClick={() => setMethod(k)}
+                    aria-selected={screen === k}
+                    onClick={() => setScreen(k)}
                     className={cn(
-                      "rounded-full px-2 py-2 text-[13px] leading-tight transition",
-                      method === k ? "bg-card font-semibold text-primary shadow-soft" : "text-muted-foreground",
+                      "rounded-full px-2 py-2 text-[12px] leading-tight transition",
+                      screen === k ? "bg-card font-semibold text-primary shadow-soft" : "text-muted-foreground",
                     )}
                   >
                     {label}
@@ -334,21 +613,30 @@ export function SettingsSheet({
                 ))}
               </div>
 
-              {method === "password" ? (
+              {screen === "signin" && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="sync-id">Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
+                    <Label htmlFor="sync-id">User Name / Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
                     <Input
                       id="sync-id"
                       autoComplete="username"
-                      placeholder="shop@gmail.com / 09xxxxxxxxx"
+                      placeholder="User Name / shop@gmail.com / 09xxxxxxxx"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       className="h-11 text-base"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="sync-pw">Password (အနည်းဆုံး ၆ လုံး)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="sync-pw">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotId(identifier); setScreen("forgot"); }}
+                        className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        Password မေ့နေပါသလား?
+                      </button>
+                    </div>
                     <div className="relative">
                       <Input
                         id="sync-pw"
@@ -356,30 +644,159 @@ export function SettingsSheet({
                         autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && void passwordAction("signin")}
+                        onKeyDown={(e) => e.key === "Enter" && void handleSignIn()}
                         className="h-11 pr-11 text-base"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        aria-label={showPw ? "Hide password" : "Show password"}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
                       >
                         {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void passwordAction("signin")} disabled={busy !== null}>
+                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void handleSignIn()} disabled={busy !== null}>
                     {busy === "signin" ? <Loader2 className="animate-spin" /> : <LogIn />} ဝင်မည် (Sign In)
                   </Button>
-                  <Button variant="champagne" size="xl" className="w-full" onClick={() => void passwordAction("signup")} disabled={busy !== null}>
-                    {busy === "signup" ? <Loader2 className="animate-spin" /> : <UserPlus />} အကောင့်သစ် ဖွင့်မည် (Register)
+                  <Button variant="champagne" size="xl" className="w-full" onClick={() => setScreen("register")}>
+                    <UserPlus /> အကောင့်သစ် ဖွင့်မည် (Register)
                   </Button>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    ပထမဆုံး ဖုန်းတွင် “အကောင့်သစ် ဖွင့်မည်” ကို တစ်ကြိမ်သာ နှိပ်ပါ။ အခြားဖုန်း/ကွန်ပျူတာများတွင် Email (သို့) ဖုန်းနံပါတ်နှင့် Password တူတူဖြင့် “ဝင်မည်” နှိပ်ပါက မှတ်တမ်းအားလုံး ချက်ချင်း ရောက်လာပါမည်။
-                  </p>
                 </div>
-              ) : (
+              )}
+
+              {screen === "register" && (
+                <div className="space-y-2.5">
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-user">User Name (အမည် / ဆိုင်နာမည်)</Label>
+                    <Input
+                      id="reg-user"
+                      placeholder="ဥပမာ - ZuZuTailor"
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-id">Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
+                    <Input
+                      id="reg-id"
+                      placeholder="shop@gmail.com သို့မဟုတ် 09xxxxxxxx"
+                      value={regIdentifier}
+                      onChange={(e) => setRegIdentifier(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-pw">Password (အနည်းဆုံး ၆ လုံး)</Label>
+                    <div className="relative">
+                      <Input
+                        id="reg-pw"
+                        type={showRegPw ? "text" : "password"}
+                        placeholder="Password အသစ် ထည့်ပါ"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        className="h-10 pr-10 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPw((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
+                      >
+                        {showRegPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-confirm-pw">Confirm Password (Password ထပ်ထည့်ပါ)</Label>
+                    <Input
+                      id="reg-confirm-pw"
+                      type={showRegPw ? "text" : "password"}
+                      placeholder="အပေါ်က Password အတိုင်း ပြန်ရိုက်ပါ"
+                      value={regConfirmPw}
+                      onChange={(e) => setRegConfirmPw(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-pin">Recovery PIN (ဂဏန်း ၄ လုံး — Password မေ့လျှင် ပြန်ယူရန်)</Label>
+                    <Input
+                      id="reg-pin"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="ဥပမာ - 1995 (မှတ်မိလွယ်သော ဂဏန်း ၄ လုံး)"
+                      value={regPin}
+                      onChange={(e) => setRegPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      className="h-10 text-sm tracking-widest"
+                    />
+                  </div>
+                  <Button variant="burgundy" size="xl" className="mt-1 w-full" onClick={() => void handleRegister()} disabled={busy !== null}>
+                    {busy === "signup" ? <Loader2 className="animate-spin" /> : <UserPlus />} အကောင့်သစ် အတည်ပြုဖွင့်မည်
+                  </Button>
+                </div>
+              )}
+
+              {screen === "forgot" && (
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setScreen("signin")}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> ဝင်မည် စာမျက်နှာသို့ ပြန်သွားရန်
+                  </button>
+                  <div className="rounded-xl bg-secondary/70 p-2.5 text-xs text-muted-foreground">
+                    Password မေ့သွားပါက အကောင့်ဖွင့်စဉ်က သတ်မှတ်ထားသော <b>PIN ဂဏန်း ၄ လုံး</b> (သို့မဟုတ် Admin ထံမှ ရရှိသော <b>RST-... Code</b>) ဖြင့် Password အသစ် ပြန်ပြောင်းနိုင်ပါသည်။
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fg-id">User Name / Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
+                    <Input
+                      id="fg-id"
+                      placeholder="User Name / shop@gmail.com / 09xxxxxxxx"
+                      value={forgotId}
+                      onChange={(e) => setForgotId(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fg-secret">PIN ၄ လုံး (သို့) Admin Reset Code</Label>
+                    <Input
+                      id="fg-secret"
+                      placeholder="1234 သို့မဟုတ် RST-XXXX-XXXX-XXXXXX"
+                      value={forgotSecret}
+                      onChange={(e) => setForgotSecret(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fg-new-pw">Password အသစ် (အနည်းဆုံး ၆ လုံး)</Label>
+                    <Input
+                      id="fg-new-pw"
+                      type="password"
+                      placeholder="Password အသစ် ထည့်ပါ"
+                      value={forgotNewPw}
+                      onChange={(e) => setForgotNewPw(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fg-confirm-pw">Password အသစ် ထပ်မံအတည်ပြုပါ</Label>
+                    <Input
+                      id="fg-confirm-pw"
+                      type="password"
+                      placeholder="Password အသစ် ထပ်ရိုက်ပါ"
+                      value={forgotConfirmPw}
+                      onChange={(e) => setForgotConfirmPw(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void handleForgotReset()} disabled={busy !== null}>
+                    {busy === "forgot" ? <Loader2 className="animate-spin" /> : <KeyRound />} Password အသစ် ပြန်သတ်မှတ်မည်
+                  </Button>
+                </div>
+              )}
+
+              {screen === "code" && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
@@ -396,7 +813,7 @@ export function SettingsSheet({
                   </div>
                   <Button variant="burgundy" size="xl" className="w-full" onClick={send} disabled={busy !== null}>
                     {busy === "send" ? <Loader2 className="animate-spin" /> : <Mail />}
-                    Send Verification Code / Code ပို့ပါ
+                    Send Verification Code / Code ပို့ရန်
                   </Button>
 
                   {sent && (
@@ -425,9 +842,6 @@ export function SettingsSheet({
                         {busy === "verify" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
                         {lockLeft > 0 ? `${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ` : "Verify & Connect"}
                       </Button>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        Email ထဲတွင် Code မတွေ့ပါက Spam ကို စစ်ပါ။ ဂဏန်း ၆ လုံး Code ကို ဤနေရာတွင် ရိုက်ထည့်ပါ (၅ ကြိမ်အထိ ကြိုးစားနိုင်ပါသည်)။
-                      </p>
                     </div>
                   )}
                 </div>
@@ -436,11 +850,11 @@ export function SettingsSheet({
           )}
         </section>
 
-        <section className="mt-4 space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+        <section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <h3 className="font-display text-base font-bold text-primary">Data Backup</h3>
           <div className="grid gap-2">
             <Button variant="soft" size="xl" className="h-auto justify-start whitespace-normal py-3 text-left leading-snug" onClick={doExport}>
-              <Download /> 📥 Export All Customers (ဆိုင်ရှိ Customer အားလုံး သိမ်းမည်)
+              <Download /> Export All Customers (ဆိုင်ရှိ Customer အားလုံး သိမ်းမည်)
             </Button>
             <Button
               variant="soft"
@@ -448,10 +862,11 @@ export function SettingsSheet({
               className="h-auto justify-start whitespace-normal py-3 text-left leading-snug"
               onClick={() => fileRef.current?.click()}
             >
-              <Upload /> 📤 Import All Customers (Customer အားလုံး ပြန်သွင်းမည်)
+              <Upload /> Import All Customers (Customer အားလုံး ပြန်သွင်းမည်)
             </Button>
             <Button
               variant="ghost"
+              size="xl"
               className="h-auto justify-start whitespace-normal border border-dashed border-gold/50 py-2.5 text-left leading-snug"
               onClick={() => singleRef.current?.click()}
             >
@@ -459,7 +874,7 @@ export function SettingsSheet({
             </Button>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            ပြန်သွင်းသည့်အခါ ရှိပြီးသား Customer များကို မဖျက်ပါ။ Customer တစ်ယောက်ချင်း ဖိုင်ကို ဘောင်ချာ စာမျက်နှာမှ ထုတ်နိုင်ပါသည်။
+            ပြန်သွင်းသည့်အခါ ရှိပြီးသား Customer များကို မဖျက်ဘဲ Customer တစ်ယောက်ချင်းစီ ပိုမို နောက်ကျသော အချက်အလက်များ ထည့်သွင်းပါသည်။
           </p>
           {fileInput(fileRef, false)}
           {fileInput(singleRef, true)}
