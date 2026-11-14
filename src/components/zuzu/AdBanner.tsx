@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff, ClipboardPaste, Lock } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,6 @@ const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.a
 
 const ADSTERRA_KEY = "e43dc76571a72f3e622f9db5a6edf48a";
 const ADSTERRA_SRC = "https://bauval.org/22/e43dc76571a72f3e622f9db5a6edf48a";
-const ADSTERRA_SRCDOC = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style></head><body><script type="text/javascript">atOptions = { 'key' : '${ADSTERRA_KEY}', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };</script><script type="text/javascript" src="${ADSTERRA_SRC}"></script></body></html>`;
 
 const PLAN_OPTIONS = [
   { id: "1M", name: "1 Month (၁ လစာ)", price: "3,500 Ks" },
@@ -339,6 +338,31 @@ export function AdBanner() {
     setShowAdminPass(false);
   };
 
+  const adSlotRef = useRef<HTMLDivElement>(null);
+  const showAds = !isOwner && !vipInfo;
+
+  // Inject the Adsterra banner directly into the page (real origin, no sandbox)
+  useEffect(() => {
+    if (!showAds) return;
+    const slot = adSlotRef.current;
+    if (!slot) return;
+    slot.innerHTML = "";
+    const w = window as unknown as { atOptions?: Record<string, unknown> };
+    w.atOptions = { key: ADSTERRA_KEY, format: "iframe", height: 50, width: 320, params: {} };
+    const inline = document.createElement("script");
+    inline.type = "text/javascript";
+    inline.text = `window.atOptions = { 'key': '${ADSTERRA_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
+    slot.appendChild(inline);
+    const external = document.createElement("script");
+    external.type = "text/javascript";
+    external.src = ADSTERRA_SRC;
+    external.async = true;
+    slot.appendChild(external);
+    return () => {
+      slot.innerHTML = "";
+    };
+  }, [showAds]);
+
   if (isOwner) {
     return (
       <div className="no-print mx-auto max-w-3xl px-4 pb-4 text-center">
@@ -382,18 +406,9 @@ export function AdBanner() {
 
         <div
           id="mpt-ad-slot"
+          ref={adSlotRef}
           className="mt-2 flex min-h-[60px] items-center justify-center overflow-hidden rounded-xl bg-secondary/70 px-3 py-2"
         >
-          <iframe
-            title="Sponsored"
-            srcDoc={ADSTERRA_SRCDOC}
-            width={320}
-            height={50}
-            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-            loading="lazy"
-            scrolling="no"
-            style={{ border: 0, width: 320, height: 50, maxWidth: "100%", display: "block" }}
-          />
         </div>
       </div>
 
