@@ -8,8 +8,7 @@ const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
 // App ပိုင်ရှင် Email (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
-const OWNER_EMAILS = ["pixel2xl.mdy@gmail.com"];
-
+const OWNER_EMAILS: string[] = [];
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
 const PLAN_OPTIONS = [
