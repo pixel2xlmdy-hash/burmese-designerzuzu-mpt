@@ -3,10 +3,8 @@ import { Crown, X, Check, ExternalLink } from "lucide-react";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_data";
 
-// ကိုကြီး၏ TikTok Account Link
-const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin?_r=1&_t=ZS-9BOAADzpDFd";
+const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
-// Plan အလိုက် လျှို့ဝှက် VIP ကုဒ်များ (ကိုကြီး စိတ်ကြိုက် ပြောင်းလဲနိုင်ပါသည်)
 const VIP_PLANS: Record<string, { label: string; days: number }> = {
   MPT1M2026: { label: "1 Month Plan (၁ လစာ)", days: 30 },
   MPT6M2026: { label: "6 Months Plan (၆ လစာ)", days: 180 },
@@ -27,7 +25,6 @@ export function AdBanner() {
       if (typeof parsed.expiresAt === "number" && Date.now() < parsed.expiresAt) {
         setIsVip(true);
       } else {
-        // သက်တမ်းကုန်သွားရင် VIP ဖြုတ်ပြီး ကြော်ငြာပြန်ပြမည်
         localStorage.removeItem(VIP_STORAGE_KEY);
         setIsVip(false);
       }
@@ -100,7 +97,6 @@ export function AdBanner() {
               </button>
             </div>
 
-            {/* Plan ရွေးချယ်စရာ စာရင်း */}
             <div className="mt-3 space-y-2 text-xs">
               <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
                 <span className="font-medium">1 Month (၁ လစာ)</span>
@@ -117,8 +113,3 @@ export function AdBanner() {
                 </span>
                 <span className="font-bold text-burgundy">36,000 Ks</span>
               </div>
-            </div>
-
-            {/* TikTok ဆက်သွယ်ရန် ခလုတ် */}
-            <a
-              href={TIKTOK_
