@@ -11,6 +11,10 @@ const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AA
 const OWNER_EMAILS: string[] = [];
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
+const ADSTERRA_KEY = "e43dc76571a72f3e622f9db5a6edf48a";
+const ADSTERRA_SRC = "https://bauval.org/22/e43dc76571a72f3e622f9db5a6edf48a";
+const ADSTERRA_SRCDOC = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style></head><body><script type="text/javascript">atOptions = { 'key' : '${ADSTERRA_KEY}', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };</script><script type="text/javascript" src="${ADSTERRA_SRC}"></script></body></html>`;
+
 const PLAN_OPTIONS = [
   { id: "1M", name: "1 Month (၁ လစာ)", price: "3,500 Ks" },
   { id: "3M", name: "3 Months (၃ လစာ)", price: "10,000 Ks" },
@@ -378,9 +382,18 @@ export function AdBanner() {
 
         <div
           id="mpt-ad-slot"
-          className="mt-2 flex min-h-[60px] items-center justify-center rounded-xl bg-secondary/70 px-3 py-2 text-center text-xs text-muted-foreground"
+          className="mt-2 flex min-h-[60px] items-center justify-center overflow-hidden rounded-xl bg-secondary/70 px-3 py-2"
         >
-          မြောက်ပြင်သူ (MPT) Tailor Pro — Free Version (ကြော်ငြာနေရာ)
+          <iframe
+            title="Sponsored"
+            srcDoc={ADSTERRA_SRCDOC}
+            width={320}
+            height={50}
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+            loading="lazy"
+            scrolling="no"
+            style={{ border: 0, width: 320, height: 50, maxWidth: "100%", display: "block" }}
+          />
         </div>
       </div>
 
