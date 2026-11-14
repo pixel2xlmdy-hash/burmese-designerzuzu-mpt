@@ -11,8 +11,7 @@ const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
 const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
 
 // App ပိုင်ရှင် Email များ (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
-const OWNER_EMAILS = ["aungkyaw.ariya92@gmail.com"];
-
+const OWNER_EMAILS = ["pixel2xl.mdy@gmail.com"];
 // ခွင့်ပြုထားသော Domain များ (တခြား Domain တွင် ခိုးကူးတင်ပါက ပိတ်ထားမည်)
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
