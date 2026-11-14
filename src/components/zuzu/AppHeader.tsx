@@ -5,6 +5,7 @@ import { BRAND_SUBTITLE, BRAND_TITLE } from "@/lib/brand";
 import type { StoreState } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
+import { HeaderAdOverlay } from "./AdBanner";
 
 export function AppHeader({ store, onSettings }: { store: StoreState; onSettings: () => void }) {
   const connected = store.online && !!store.userId;
@@ -16,11 +17,14 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
         <Logo className="h-12 w-12 shrink-0 gold-ring" />
-        <div className="min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1">
           <h1 className="font-display text-2xl font-bold leading-tight text-primary">MPT FIT TAILOR PRO</h1>
           <p className="font-script text-base italic leading-none tracking-wide text-gold">
             {BRAND_SUBTITLE}
           </p>
+          <div className="absolute inset-0 flex items-center">
+            <HeaderAdOverlay />
+          </div>
         </div>
         <span
           role="status"
@@ -36,7 +40,7 @@ export function AppHeader({ store, onSettings }: { store: StoreState; onSettings
           </span>
         </span>
         <Button variant="soft" size="icon-lg" onClick={onSettings} aria-label="Settings">
-          <Settings className="!size-5" />
+          <Settings className="size-5" />
         </Button>
       </div>
     </header>
