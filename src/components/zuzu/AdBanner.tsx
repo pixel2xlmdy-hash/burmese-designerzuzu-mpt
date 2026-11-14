@@ -3,21 +3,14 @@ import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 
-const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
+const VIP_STORAGE_KEY = "mpt_tailor_vip_v3";
 const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
-
-const ADMIN_GATE_PASS = "ZUZUADMIN888";
-const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
-const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
 
 // App ပိုင်ရှင် Email (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
 const OWNER_EMAILS = ["pixel2xl.mdy@gmail.com"];
 
-// ခွင့်ပြုထားသော Domain များ (တခြား Domain တွင် ခိုးကူးတင်ပါက ပိတ်ထားမည်)
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
-
-const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
 
 const PLAN_OPTIONS = [
   { id: "1M", name: "1 Month (၁ လစာ)", price: "3,500 Ks" },
@@ -29,27 +22,16 @@ const PLAN_OPTIONS = [
 function isAuthorizedOrigin(): boolean {
   if (typeof window === "undefined") return true;
   const host = window.location.hostname.toLowerCase();
-  if (!host) return true; // Android APK local WebView
+  if (!host) return true;
   return ALLOWED_HOSTS.some((h) => host === h || host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com"));
 }
 
-function makeSignature(payload: string): string {
+function hashDeviceFingerprint(raw: string): string {
   let hash = 5381;
-  const full = `${SIGN_SALT}:${payload}`;
-  for (let i = 0; i < full.length; i++) {
-    hash = ((hash << 5) + hash + full.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) + hash + raw.charCodeAt(i)) >>> 0;
   }
-  return hash.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
-}
-
-// User Password မေ့လျှင် Admin ထုတ်ပေးမည့် ၂၄ နာရီသုံး Reset Code
-function generateResetCode(targetIdentifier: string): string {
-  const cleanTarget = targetIdentifier.trim().toLowerCase();
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const expHex = Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 60000).toString(36).toUpperCase();
-  const body = `${rand}-${expHex}`;
-  const sig = makeSignature(`RST:${cleanTarget}:${body}`);
-  return `RST-${body}-${sig}`;
+  return hash.toString(36).toUpperCase().padStart(6, "0");
 }
 
 // Uninstall လုပ်ပြီး ပြန်သွင်းလည်း မပြောင်းလဲသော Hardware + Email Hybrid ID
@@ -65,41 +47,7 @@ function getHybridDeviceId(userEmail: string): string {
     `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
     Intl.DateTimeFormat().resolvedOptions().timeZone || "",
   ].join("|");
-  return `hw:${makeSignature(rawHw)}`;
-}
-
-function generateVipCode(planTag: string, days: number): string {
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const expMs = Date.now() + days * 24 * 60 * 60 * 1000;
-  const expHex = Math.floor(expMs / 60000).toString(36).toUpperCase();
-  const body = `${planTag}-${rand}-${expHex}`;
-  const sig = makeSignature(body);
-  return `MPT-${body}-${sig}`;
-}
-
-function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; planLabel?: string; expiresAt?: number } {
-  if (!isAuthorizedOrigin()) return { valid: false };
-  const parts = rawCode.trim().toUpperCase().split("-");
-  if (parts.length !== 5 || parts[0] !== "MPT") return { valid: false };
-  const [, planTag, rand, expHex, sig] = parts;
-  const body = `${planTag}-${rand}-${expHex}`;
-  if (makeSignature(body) !== sig) return { valid: false };
-
-  const expMinutes = parseInt(expHex, 36);
-  if (isNaN(expMinutes)) return { valid: false };
-  const expiresAt = expMinutes * 60000;
-
-  if (Date.now() >= expiresAt) {
-    return { valid: false, expired: true };
-  }
-
-  const labels: Record<string, string> = {
-    "1M": "1 Month VIP",
-    "3M": "3 Months VIP",
-    "6M": "6 Months VIP",
-    "1Y": "1 Year VIP",
-  };
-  return { valid: true, planLabel: labels[planTag] || "VIP Plan", expiresAt };
+  return `hw:${hashDeviceFingerprint(rawHw)}`;
 }
 
 export function AdBanner() {
@@ -116,6 +64,7 @@ export function AdBanner() {
   const [adminTab, setAdminTab] = useState<"vip" | "reset">("vip");
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
+  const [verifiedAdminCreds, setVerifiedAdminCreds] = useState<{ email: string; password: string } | null>(null);
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [activeGenTag, setActiveGenTag] = useState("");
@@ -129,37 +78,8 @@ export function AdBanner() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const onContext = (e: MouseEvent) => {
-      if ((e.target as HTMLElement)?.tagName !== "INPUT") e.preventDefault();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase()))) {
-        e.preventDefault();
-      }
-    };
-    document.addEventListener("contextmenu", onContext);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("contextmenu", onContext);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, []);
-
-  useEffect(() => {
     const checkVipStatus = async () => {
       try {
-        const raw = localStorage.getItem(VIP_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed?.expiresAt && Date.now() < parsed.expiresAt && isAuthorizedOrigin()) {
-            setVipInfo(parsed);
-            return;
-          } else {
-            localStorage.removeItem(VIP_STORAGE_KEY);
-            setVipInfo(null);
-          }
-        }
-
         const currentDeviceId = getHybridDeviceId(userEmail);
         const { data: rows } = await (supabase as any).rpc("check_vip_by_device", {
           p_device_id: currentDeviceId,
@@ -169,6 +89,18 @@ export function AdBanner() {
           const restored = { planLabel: rows[0].plan_label || "VIP Plan", expiresAt: Number(rows[0].expires_at) };
           localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(restored));
           setVipInfo(restored);
+          return;
+        }
+
+        const raw = localStorage.getItem(VIP_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.expiresAt && Date.now() < parsed.expiresAt && isAuthorizedOrigin()) {
+            setVipInfo(parsed);
+          } else {
+            localStorage.removeItem(VIP_STORAGE_KEY);
+            setVipInfo(null);
+          }
         }
       } catch {}
     };
@@ -214,59 +146,69 @@ export function AdBanner() {
     }
 
     const trimmed = code.trim();
-    if (trimmed === ADMIN_GATE_PASS) {
-      const lockSec = getLockRemainingSec();
-      if (lockSec > 0) {
-        setError(`လုံခြုံရေးအရ ${lockSec} စက္ကန့် စောင့်ဆိုင်းပြီးမှ ပြန်ဝင်ပါ`);
-        return;
-      }
-      setAdminStep("login");
-      setError("");
-      setCode("");
-      return;
-    }
-
-    const normalizedCode = trimmed.toUpperCase();
-    const res = verifyVipCode(normalizedCode);
-
-    if (res.expired) {
-      setError("ဤ VIP Code သည် သက်တမ်းကုန်ဆုံးသွားပါပြီ (Code အသစ် ထပ်မံဝယ်ယူပါ)");
-      return;
-    }
-
-    if (!res.valid || !res.expiresAt || !res.planLabel) {
-      setError("VIP ကုဒ် မှားယွင်းနေပါသည် (TikTok မှတစ်ဆင့် ဆက်သွယ်ဝယ်ယူပါ)");
+    if (!trimmed) {
+      setError("VIP ကုဒ် ထည့်သွင်းပါ");
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      const currentDeviceId = getHybridDeviceId(userEmail);
-      const { data: claimStatus, error: claimErr } = await (supabase as any).rpc("claim_vip_code", {
-        p_code: normalizedCode,
-        p_device_id: currentDeviceId,
-        p_plan_label: res.planLabel,
-        p_expires_at: res.expiresAt,
+      // 1. Admin Gate ဟုတ်/မဟုတ် Server တွင် စစ်ဆေးခြင်း
+      const { data: isGate } = await (supabase as any).rpc("verify_admin_gate", {
+        input_gate: trimmed,
       });
 
-      if (claimErr) {
+      if (isGate === true) {
+        const lockSec = getLockRemainingSec();
+        if (lockSec > 0) {
+          setError(`လုံခြုံရေးအရ ${lockSec} စက္ကန့် စောင့်ဆိုင်းပြီးမှ ပြန်ဝင်ပါ`);
+          setLoading(false);
+          return;
+        }
+        setAdminStep("login");
+        setError("");
+        setCode("");
+        setLoading(false);
+        return;
+      }
+
+      // 2. VIP Code ကို Server တွင် အတည်ပြုပြီး 1-Device Lock ချခြင်း
+      const currentDeviceId = getHybridDeviceId(userEmail);
+      const { data: res, error: rpcErr } = await (supabase as any).rpc("redeem_server_vip_code", {
+        p_code: trimmed,
+        p_device_id: currentDeviceId,
+      });
+
+      if (rpcErr || !res) {
         setError("အင်တာနက် ချိတ်ဆက်မှု စစ်ဆေးပြီး ပြန်လည်အတည်ပြုပါ");
         setLoading(false);
         return;
       }
 
-      if (claimStatus === "TAKEN") {
+      if (res.status === "EXPIRED") {
+        setError("ဤ VIP Code သည် သက်တမ်းကုန်ဆုံးသွားပါပြီ (Code အသစ် ထပ်မံဝယ်ယူပါ)");
+        setLoading(false);
+        return;
+      }
+
+      if (res.status === "TAKEN") {
         setError("ဤ VIP Code ကို အခြားဖုန်း/အကောင့်တွင် အသုံးပြုပြီးဖြစ်ပါသည် (1 Device Only)");
         setLoading(false);
         return;
       }
 
-      const data = { planLabel: res.planLabel, expiresAt: res.expiresAt };
+      if (res.status !== "OK") {
+        setError("VIP ကုဒ် မှားယွင်းနေပါသည် (TikTok မှတစ်ဆင့် ဆက်သွယ်ဝယ်ယူပါ)");
+        setLoading(false);
+        return;
+      }
+
+      const vipData = { planLabel: res.planLabel || "VIP Plan", expiresAt: Number(res.expiresAt) };
       try {
-        localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(vipData));
       } catch {}
-      setVipInfo(data);
+      setVipInfo(vipData);
       setShowModal(false);
       setError("");
     } catch {
@@ -276,42 +218,87 @@ export function AdBanner() {
     }
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
     const lockSec = getLockRemainingSec();
     if (lockSec > 0) {
       setError(`Password မှားယွင်းမှုများသဖြင့် ${lockSec} စက္ကန့် Lock ချထားပါသည်`);
       return;
     }
 
-    if (
-      adminUserInput.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase() &&
-      adminPassInput.trim() === ADMIN_PASSWORD
-    ) {
-      setAdminStep("generator");
-      setFailCount(0);
-      setError("");
-      setAdminUserInput("");
-      setAdminPassInput("");
-    } else {
-      const nextFail = failCount + 1;
-      setFailCount(nextFail);
-      if (nextFail >= 3) {
-        try {
-          localStorage.setItem(ADMIN_LOCK_KEY, String(Date.now() + 5 * 60 * 1000));
-        } catch {}
-        setAdminStep("none");
+    setLoading(true);
+    setError("");
+    try {
+      const cleanEmail = adminUserInput.trim();
+      const cleanPass = adminPassInput.trim();
+      const { data: isValid } = await (supabase as any).rpc("verify_admin_credentials", {
+        input_email: cleanEmail,
+        input_password: cleanPass,
+      });
+
+      if (isValid === true) {
+        setVerifiedAdminCreds({ email: cleanEmail, password: cleanPass });
+        setAdminStep("generator");
         setFailCount(0);
-        setError("Password ၃ ကြိမ် မှားယွင်းသဖြင့် ၅ မိနစ် Lock ချလိုက်ပါပြီ");
+        setError("");
+        setAdminUserInput("");
+        setAdminPassInput("");
       } else {
-        setError(`Email သို့မဟုတ် Password မှားယွင်းနေပါသည် (${3 - nextFail} ကြိမ်သာ ကျန်ပါတော့သည်)`);
+        const nextFail = failCount + 1;
+        setFailCount(nextFail);
+        if (nextFail >= 3) {
+          try {
+            localStorage.setItem(ADMIN_LOCK_KEY, String(Date.now() + 5 * 60 * 1000));
+          } catch {}
+          setAdminStep("none");
+          setFailCount(0);
+          setError("Password ၃ ကြိမ် မှားယွင်းသဖြင့် ၅ မိနစ် Lock ချလိုက်ပါပြီ");
+        } else {
+          setError(`Email သို့မဟုတ် Password မှားယွင်းနေပါသည် (${3 - nextFail} ကြိမ်သာ ကျန်ပါတော့သည်)`);
+        }
       }
+    } catch {
+      setError("Server ချိတ်ဆက်မှု မအောင်မြင်ပါ");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCreateCode = (tag: string, days: number) => {
+  const handleCreateCode = async (tag: string, days: number) => {
+    if (!verifiedAdminCreds) return;
     setActiveGenTag(tag);
-    setGeneratedCode(generateVipCode(tag, days));
-    setCopied(false);
+    setLoading(true);
+    try {
+      const { data: newCode } = await (supabase as any).rpc("generate_server_vip_code", {
+        admin_email: verifiedAdminCreds.email,
+        admin_password: verifiedAdminCreds.password,
+        plan_tag: tag,
+        days_valid: days,
+      });
+      if (newCode && newCode !== "UNAUTHORIZED") {
+        setGeneratedCode(newCode);
+        setCopied(false);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateResetCode = async () => {
+    if (!verifiedAdminCreds || !resetTargetInput.trim()) return;
+    setLoading(true);
+    try {
+      const { data: newRst } = await (supabase as any).rpc("generate_server_reset_code", {
+        admin_email: verifiedAdminCreds.email,
+        admin_password: verifiedAdminCreds.password,
+        target_identifier: resetTargetInput.trim(),
+      });
+      if (newRst && newRst !== "UNAUTHORIZED") {
+        setGeneratedResetCode(newRst);
+        setCopiedReset(false);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyTextSafely = async (txt: string) => {
@@ -342,6 +329,7 @@ export function AdBanner() {
   const resetModal = () => {
     setShowModal(false);
     setAdminStep("none");
+    setVerifiedAdminCreds(null);
     setError("");
     setAdminUserInput("");
     setAdminPassInput("");
@@ -453,7 +441,6 @@ export function AdBanner() {
                     <button
                       type="button"
                       onClick={() => setShowAdminPass((v) => !v)}
-                      aria-label={showAdminPass ? "Password ဖျောက်ရန်" : "Password ကြည့်ရန်"}
                       className="rounded-lg p-1 text-neutral-600 hover:bg-neutral-200"
                     >
                       {showAdminPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -463,12 +450,13 @@ export function AdBanner() {
                 {error && <p className="text-xs font-medium text-red-600">{error}</p>}
                 <button
                   type="button"
-                  onClick={handleAdminLogin}
+                  disabled={loading}
+                  onClick={() => void handleAdminLogin()}
                   style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
-                  className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90"
+                  className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 disabled:opacity-60"
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  ဝင်ရောက်မည်
+                  {loading ? "စစ်ဆေးနေပါသည်..." : "ဝင်ရောက်မည်"}
                 </button>
               </div>
             ) : adminStep === "generator" ? (
@@ -511,7 +499,8 @@ export function AdBanner() {
                           <button
                             key={item.tag}
                             type="button"
-                            onClick={() => handleCreateCode(item.tag, item.days)}
+                            disabled={loading}
+                            onClick={() => void handleCreateCode(item.tag, item.days)}
                             className={`rounded-xl py-2 transition ${
                               isSelected
                                 ? "border-2 border-amber-400 bg-amber-50 font-bold text-amber-900 shadow-sm"
@@ -543,26 +532,23 @@ export function AdBanner() {
                 ) : (
                   <div className="space-y-2">
                     <p className="text-neutral-600">
-                      Password မေ့သွားသော User ၏ Email သို့မဟုတ် ဖုန်းနံပါတ်ကို ထည့်ပြီး Reset Code ထုတ်ပေးပါ-
+                      Password မေ့သွားသော User ၏ User Name / Email သို့မဟုတ် ဖုန်းနံပါတ်ကို ထည့်ပြီး Reset Code ထုတ်ပေးပါ-
                     </p>
                     <input
                       type="text"
                       value={resetTargetInput}
                       onChange={(e) => setResetTargetInput(e.target.value)}
-                      placeholder="User Email သို့မဟုတ် 09xxxxxxxx"
+                      placeholder="User Name / Email / 09xxxxxxxx"
                       className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-xs text-neutral-900"
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!resetTargetInput.trim()) return;
-                        setGeneratedResetCode(generateResetCode(resetTargetInput));
-                        setCopiedReset(false);
-                      }}
+                      disabled={loading}
+                      onClick={() => void handleCreateResetCode()}
                       style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
-                      className="flex h-9 w-full items-center justify-center rounded-xl text-xs font-bold"
+                      className="flex h-9 w-full items-center justify-center rounded-xl text-xs font-bold disabled:opacity-60"
                     >
-                      Reset Code ထုတ်မည် (၂၄ နာရီသုံး)
+                      {loading ? "ထုတ်ယူနေပါသည်..." : "Reset Code ထုတ်မည် (၂၄ နာရီသုံး)"}
                     </button>
                     {generatedResetCode && (
                       <div className="rounded-xl border-2 border-amber-400 bg-amber-50/50 p-3">
@@ -629,7 +615,7 @@ export function AdBanner() {
                       type="text"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
-                      placeholder="MPT-1M-XXXX-XXXXXX-XXXXXX"
+                      placeholder="MPT-1M-XXXX-XXXXXXXXXXXXX-XXXXXXXX"
                       className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 pl-3 pr-20 text-xs text-neutral-900"
                     />
                     <button
@@ -645,7 +631,7 @@ export function AdBanner() {
                   <button
                     type="button"
                     disabled={loading}
-                    onClick={handleUnlockOrGate}
+                    onClick={() => void handleUnlockOrGate()}
                     style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
                     className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 disabled:opacity-60"
                   >
