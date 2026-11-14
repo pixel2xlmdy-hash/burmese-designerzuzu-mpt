@@ -113,22 +113,23 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
           </div>
 
           {/* Voucher details */}
-          <div className="grid grid-cols-3 gap-x-4 gap-y-1 border-b border-border py-2 text-[12px]">
-            {(
-              [
-                ["Voucher No.", data.voucherNo],
-                ["Date", data.date],
-                ["Customer Name", data.customerName],
-                ["Phone", data.phone],
-                ["Designer Name", data.designName],
-                ["Garment Type", data.garmentType],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label} className="flex flex-wrap items-baseline gap-x-1.5 border-b border-dotted border-border py-[3px]">
-  <span className="shrink-0 text-muted-foreground">{label}:</span>
-  <span className="min-w-0 break-words font-semibold">{value || "—"}</span>
-</div>
-            ))}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-b border-border py-2.5 text-[12px]">
+        {(
+          [
+            ["Voucher No.", data.voucherNo],
+            ["Date", data.date],
+            ["Customer Name", data.customerName],
+            ["Phone", data.phone],
+            ["Designer Name", data.designName],
+            ["Garment Type", data.garmentType],
+          ] as const
+        ).map(([label, value]) => (
+          <div key={label} className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[3px]">
+            <span className="shrink-0 whitespace-nowrap text-muted-foreground">{label}:</span>
+            <span className="whitespace-nowrap font-semibold">{value || "—"}</span>
+          </div>
+        ))}
+      </div>
           </div>
 
           {/* Items */}
