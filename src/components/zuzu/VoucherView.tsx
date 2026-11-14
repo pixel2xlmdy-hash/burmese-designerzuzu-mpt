@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BRAND_TITLE } from "@/lib/brand";
 import { downloadJson, saveImage, todayForFile } from "@/lib/download";
+import { saveNodeAsPhoto } from "@/lib/export-image";
 import { deleteRecord, exportBackup, saveRecord } from "@/lib/store";
 import { safeFilePart, type MeasurementData, type TailorRecord } from "@/lib/tailor";
 import { Voucher } from "./Voucher";
@@ -60,42 +61,20 @@ export function VoucherView({
     if (voucherRef.current) ro.observe(voucherRef.current);
     return () => ro.disconnect();
   }, []);
-
-  const savePhoto = async () => {
-    const node = voucherRef.current;
-    if (!node) return;
-    setSaving(true);
-    try {
-      const { toBlob } = await import("html-to-image");
-      await document.fonts.ready;
-      // Capture at the voucher's real (unscaled) size so the picture has no gaps or cut-offs.
-      const rect = { width: node.offsetWidth, height: node.scrollHeight };
-      const opts = {
-        pixelRatio: 2,
-        width: rect.width,
-        height: rect.height,
-        canvasWidth: rect.width,
-        canvasHeight: rect.height,
-        backgroundColor: getComputedStyle(node).backgroundColor,
-        style: { transform: "none", margin: "0" },
-      };
-      let blob: Blob | null;
-      try {
-        blob = await toBlob(node, opts);
-      } catch {
-        blob = await toBlob(node, { ...opts, skipFonts: true });
-      }
-      if (!blob) throw new Error("empty image");
-      await saveImage(blob, `${fileBase}.png`);
-      toast.success("ဓာတ်ပုံ သိမ်းပြီးပါပြီ");
-    } catch (e) {
-      console.error(e);
-      toast.error("ဓာတ်ပုံ မသိမ်းနိုင်ပါ။ ထပ်စမ်းကြည့်ပါ။");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+const savePhoto = async () => {
+  const node = voucherRef.current;
+  if (!node) return;
+  setSaving(true);
+  try {
+    await saveNodeAsPhoto(node, `${fileBase}.png`);
+    toast.success("ဓာတ်ပုံ သိမ်းပြီးပါပြီ");
+  } catch (e) {
+    console.error(e);
+    toast.error("ဓာတ်ပုံ မသိမ်းနိုင်ပါ ထပ်စမ်းကြည့်ပါ");
+  } finally {
+    setSaving(false);
+  }
+};
   const print = () => {
     // The PDF's default file name comes from the page title.
     const prev = document.title;
