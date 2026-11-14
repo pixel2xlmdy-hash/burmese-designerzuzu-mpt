@@ -3,8 +3,8 @@ import { Crown, X, Check, ExternalLink } from "lucide-react";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_data";
 
-// ကိုကြီး၏ TikTok Account Link ကို ဤနေရာတွင် အစားထိုးထည့်ပါ
-const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@your_tiktok_username";
+// ကိုကြီး၏ TikTok Account Link
+const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin?_r=1&_t=ZS-9BOAADzpDFd";
 
 // Plan အလိုက် လျှို့ဝှက် VIP ကုဒ်များ (ကိုကြီး စိတ်ကြိုက် ပြောင်းလဲနိုင်ပါသည်)
 const VIP_PLANS: Record<string, { label: string; days: number }> = {
@@ -76,7 +76,7 @@ export function AdBanner() {
           id="mpt-ad-slot"
           className="mt-2 flex min-h-[60px] items-center justify-center rounded-xl bg-secondary/70 px-3 py-2 text-center text-xs text-muted-foreground"
         >
-          မြောက်ပြင်သူ (MPT) Tailor FIT Pro — Free Version (ကြော်ငြာနေရာ)
+          မြောက်ပြင်သူ (MPT) Tailor Pro — Free Version (ကြော်ငြာနေရာ)
         </div>
       </div>
 
@@ -121,41 +121,4 @@ export function AdBanner() {
 
             {/* TikTok ဆက်သွယ်ရန် ခလုတ် */}
             <a
-              href={TIKTOK_CONTACT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-black text-xs font-semibold text-white shadow-sm hover:opacity-90"
-            >
-              <span>TikTok မှတစ်ဆင့် ဝယ်ယူဆက်သွယ်ရန်</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-
-            <div className="mt-3 border-t border-border/60 pt-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                TikTok မှ VIP Code ရရှိပြီးပါက အောက်တွင် ရိုက်ထည့်၍ ဖွင့်ပါ-
-              </p>
-
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="VIP Code ထည့်ပါ (ဥပမာ - MPT1M2026)"
-                className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase"
-              />
-
-              {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
-
-              <button
-                type="button"
-                onClick={handleUnlockVip}
-                className="mt-3 h-10 w-full rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
-              >
-                VIP အတည်ပြုမည်
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+              href={TIKTOK_
