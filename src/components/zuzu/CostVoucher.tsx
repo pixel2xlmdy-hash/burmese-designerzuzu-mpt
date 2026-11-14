@@ -113,7 +113,7 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
           </div>
 
           {/* Voucher details */}
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-b border-border py-2.5 text-[12px]">
+                      <div className="grid grid-cols-[1fr_1fr_1.35fr] gap-x-3 gap-y-1.5 border-b border-border py-2.5 text-[11.5px]">
         {(
           [
             ["Voucher No.", data.voucherNo],
@@ -124,13 +124,12 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
             ["Garment Type", data.garmentType],
           ] as const
         ).map(([label, value]) => (
-          <div key={label} className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[3px]">
+          <div key={label} className="flex items-baseline gap-1 border-b border-dotted border-border py-[3px]">
             <span className="shrink-0 whitespace-nowrap text-muted-foreground">{label}:</span>
             <span className="whitespace-nowrap font-semibold">{value || "—"}</span>
           </div>
-        ))}     
-          </div>
-
+        ))}
+      </div>
           {/* Items */}
           <table className="mt-2.5 w-full border-collapse text-[11.5px]">
             <thead>
