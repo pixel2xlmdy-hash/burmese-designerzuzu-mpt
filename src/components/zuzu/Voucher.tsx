@@ -51,19 +51,49 @@ export const DEFAULT_VOUCHER_FOOTER = "👗 ပွဲတက်၊ ရိုး�
 const isBurmese = (t: string) => /[\u1000-\u109F]/.test(t);
 
 function VoucherLogo({ src }: { src: string }) {
+  const [cur, setCur] = useState<string>("");
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
-  if (!src || failed) return <Logo className="h-16 w-16" />;
+
+  useEffect(() => {
+    let active = true;
+    setFailed(false);
+    if (!src) {
+      setCur("");
+      return;
+    }
+    if (src.startsWith("data:")) {
+      setCur(src);
+      return;
+    }
+    fetch(src)
+      .then((res) => res.blob())
+      .then((blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (active && typeof reader.result === "string") setCur(reader.result);
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [src]);
+
+  if (!src || failed || !cur) return <Logo className="h-16 w-16" />;
   return (
     <img
-      src={src}
+      src={cur}
       alt=""
-      crossOrigin={src.startsWith("data:") ? undefined : "anonymous"}
+      decoding="sync"
       onError={() => setFailed(true)}
-      className="h-16 w-16 rounded-full bg-card object-cover"
+      className="h-16 w-16 rounded-full bg-transparent object-cover"
       draggable={false}
     />
   );
+}
 }
 
 /** Compact A4 voucher. Fixed 760px design width; printing and photo export use this node. */
@@ -99,31 +129,31 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
           </div>
         </div>
 
-        {/* Customer */}
-        <div className="grid grid-cols-5 gap-2 border-b border-border py-2.5 text-[12px]">
-          <div className="col-span-2">
-            <div className="text-muted-foreground">Customer အမည်</div>
-            <div className="text-[15px] font-bold">{data.name || "—"}</div>
+              {/* Customer */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-b border-border py-2.5 text-[12px]">
+        <div className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[2px]">
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground">Customer အမည်:</span>
+          <span className="whitespace-nowrap text-[14px] font-bold">{data.name || "—"}</span>
+        </div>
+        <div className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[2px]">
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground">ဖုန်း:</span>
+          <span className="whitespace-nowrap font-semibold">{data.phone || "—"}</span>
+        </div>
+        <div className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[2px]">
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground">ရက်စွဲ:</span>
+          <span className="whitespace-nowrap font-semibold">{data.date || "—"}</span>
+        </div>
+        <div className="flex items-baseline gap-4 border-b border-dotted border-border py-[2px]">
+          <div className="flex items-baseline gap-1">
+            <span className="shrink-0 whitespace-nowrap text-muted-foreground">ချိန်းရက်:</span>
+            <span className="whitespace-nowrap font-semibold">{data.dueDate || "—"}</span>
           </div>
-          <div>
-            <div className="text-muted-foreground">ဖုန်း</div>
-            <div className="font-semibold">{data.phone || "—"}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">ရက်စွဲ</div>
-            <div className="font-semibold">{data.date || "—"}</div>
-          </div>
-          <div className="space-y-0.5">
-            <div>
-              <span className="text-muted-foreground">ချိန်းရက် </span>
-              <span className="font-semibold">{data.dueDate || "—"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">ပွဲနေ့ </span>
-              <span className="font-semibold">{data.eventDate || "—"}</span>
-            </div>
+          <div className="flex items-baseline gap-1">
+            <span className="shrink-0 whitespace-nowrap text-muted-foreground">ပွဲနေ့:</span>
+            <span className="whitespace-nowrap font-semibold">{data.eventDate || "—"}</span>
           </div>
         </div>
+      </div>
 
         {/* Body measurements */}
         <div className="grid grid-cols-3 gap-x-5 py-2">
