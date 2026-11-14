@@ -94,8 +94,6 @@ function VoucherLogo({ src }: { src: string }) {
     />
   );
 }
-}
-
 /** Compact A4 voucher. Fixed 760px design width; printing and photo export use this node. */
 export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(function Voucher(
   { data },
