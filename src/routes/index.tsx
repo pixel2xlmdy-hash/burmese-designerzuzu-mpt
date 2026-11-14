@@ -20,6 +20,7 @@ import { VoucherView } from "@/components/zuzu/VoucherView";
 import { registerOfflineSupport } from "@/lib/pwa-register";
 import { startStore, useStore } from "@/lib/store";
 import { filterRecords, type RecordKind } from "@/lib/tailor";
+import { AdBanner } from "@/components/zuzu/AdBanner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -260,6 +261,7 @@ function Index() {
           <FooterCards />
         </div>
       )}
+      <AdBanner />
       <SettingsSheet open={settings} onOpenChange={setSettings} store={store} />
     </div>
   );
