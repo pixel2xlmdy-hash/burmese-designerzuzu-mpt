@@ -356,7 +356,6 @@ export function AdBanner() {
     const external = document.createElement("script");
     external.type = "text/javascript";
     external.src = ADSTERRA_SRC;
-    external.async = true;
     slot.appendChild(external);
     return () => {
       slot.innerHTML = "";
@@ -408,8 +407,7 @@ export function AdBanner() {
           id="mpt-ad-slot"
           ref={adSlotRef}
           className="mt-2 flex min-h-[60px] items-center justify-center overflow-hidden rounded-xl bg-secondary/70 px-3 py-2"
-        >
-        </div>
+        />
       </div>
 
       {showModal && (
