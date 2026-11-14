@@ -13,6 +13,14 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import {
+  isChunkLoadFailure,
+  registerChunkRecovery,
+  reloadOnceForChunkFailure,
+} from "../lib/chunk-reload";
+
+// Installed as soon as this module loads, before any page chunk is requested.
+registerChunkRecovery();
 
 function NotFoundComponent() {
   return (
@@ -41,6 +49,8 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    // A page chunk the browser no longer has is fixed by loading the current one.
+    if (isChunkLoadFailure(error)) reloadOnceForChunkFailure();
   }, [error]);
 
   return (

@@ -44,12 +44,130 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          auth_email: string
+          created_at: string | null
+          identifier: string
+          recovery_pin: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          auth_email: string
+          created_at?: string | null
+          identifier: string
+          recovery_pin: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          auth_email?: string
+          created_at?: string | null
+          identifier?: string
+          recovery_pin?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      vip_devices: {
+        Row: {
+          activated_at: string | null
+          code: string
+          device_id: string
+          expires_at: number
+          plan_label: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          code: string
+          device_id: string
+          expires_at: number
+          plan_label?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          code?: string
+          device_id?: string
+          expires_at?: number
+          plan_label?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_reset_user_password: {
+        Args: { new_password: string; target_auth_email: string }
+        Returns: undefined
+      }
+      check_username_exists: {
+        Args: { input_username: string }
+        Returns: boolean
+      }
+      check_vip_by_device: {
+        Args: { p_device_id: string }
+        Returns: {
+          expires_at: number
+          plan_label: string
+        }[]
+      }
+      claim_vip_code: {
+        Args: {
+          p_code: string
+          p_device_id: string
+          p_expires_at: number
+          p_plan_label: string
+        }
+        Returns: string
+      }
+      generate_server_reset_code: {
+        Args: {
+          admin_email: string
+          admin_password: string
+          target_identifier: string
+        }
+        Returns: string
+      }
+      generate_server_vip_code: {
+        Args: {
+          admin_email: string
+          admin_password: string
+          days_valid: number
+          plan_tag: string
+        }
+        Returns: string
+      }
+      get_login_identifier: {
+        Args: { input_username: string }
+        Returns: string
+      }
+      internal_sign_payload: { Args: { payload: string }; Returns: string }
+      recover_user_password: {
+        Args: {
+          input_id: string
+          input_pin: string
+          is_admin_verified: boolean
+          new_password: string
+        }
+        Returns: string
+      }
+      recover_user_password_v2: {
+        Args: { input_id: string; input_secret: string; new_password: string }
+        Returns: string
+      }
+      redeem_server_vip_code: {
+        Args: { p_code: string; p_device_id: string }
+        Returns: Json
+      }
+      verify_admin_credentials: {
+        Args: { input_email: string; input_password: string }
+        Returns: boolean
+      }
+      verify_admin_gate: { Args: { input_gate: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
