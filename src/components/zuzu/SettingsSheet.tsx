@@ -47,27 +47,6 @@ import { cn } from "@/lib/utils";
 import { downloadJson, todayForFile } from "@/lib/download";
 import { supabase } from "@/integrations/supabase/client";
 
-const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
-
-function makeSignature(payload: string): string {
-  let hash = 5381;
-  const full = `${SIGN_SALT}:${payload}`;
-  for (let i = 0; i < full.length; i++) {
-    hash = ((hash << 5) + hash + full.charCodeAt(i)) >>> 0;
-  }
-  return hash.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
-}
-
-function verifyAdminResetCode(rawCode: string, targetIdentifier: string): boolean {
-  const parts = rawCode.trim().toUpperCase().split("-");
-  if (parts.length !== 4 || parts[0] !== "RST") return false;
-  const [, rand, expHex, sig] = parts;
-  const expMinutes = parseInt(expHex, 36);
-  if (isNaN(expMinutes) || Date.now() >= expMinutes * 60000) return false;
-  const cleanTarget = targetIdentifier.trim().toLowerCase();
-  return makeSignature(`RST:${cleanTarget}:${rand}-${expHex}`) === sig;
-}
-
 function errorText(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/otp_locked/i.test(msg)) return "Code အကြိမ်များစွာ မှားယွင်းသဖြင့် ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ";
@@ -162,7 +141,6 @@ export function SettingsSheet({
     setBusy("signin");
     try {
       let loginTarget = rawId;
-      // User Name ဖြင့် ဝင်ရောက်ခြင်းဖြစ်ပါက လုံခြုံသော RPC Function မှ ရှာမည်
       if (!loginIdentity(rawId)) {
         const { data: foundIdentifier } = await (supabase as any).rpc("get_login_identifier", {
           input_username: rawId,
@@ -216,7 +194,6 @@ export function SettingsSheet({
 
     setBusy("signup");
     try {
-      // User Name ရှိပြီးသား ဟုတ်/မဟုတ် လုံခြုံသော RPC Function ဖြင့် စစ်မည်
       const { data: exists } = await (supabase as any).rpc("check_username_exists", {
         input_username: uName,
       });
@@ -255,7 +232,7 @@ export function SettingsSheet({
     }
   };
 
-  // 3. Forgot Password (PIN 4 လုံး သို့မဟုတ် Admin Reset Code ဖြင့် ပြန်ယူခြင်း)
+  // 3. Forgot Password (Server-side PIN 4 လုံး သို့မဟုတ် Admin Reset Code ဖြင့် ပြန်ယူခြင်း)
   const handleForgotReset = async () => {
     const rawId = forgotId.trim();
     const secret = forgotSecret.trim();
@@ -280,18 +257,9 @@ export function SettingsSheet({
 
     setBusy("forgot");
     try {
-      const parsed = loginIdentity(rawId);
-      const isAdminCodeValid =
-        verifyAdminResetCode(secret, rawId) ||
-        (parsed?.email ? verifyAdminResetCode(secret, parsed.email) : false);
-
-      const cleanPin = secret.replace(/\D/g, "");
-      const targetInput = parsed?.email && isAdminCodeValid ? parsed.email : rawId;
-
-      const { data: status, error: rpcErr } = await (supabase as any).rpc("recover_user_password", {
-        input_id: targetInput,
-        input_pin: cleanPin,
-        is_admin_verified: isAdminCodeValid,
+      const { data: status, error: rpcErr } = await (supabase as any).rpc("recover_user_password_v2", {
+        input_id: rawId,
+        input_secret: secret,
         new_password: forgotNewPw,
       });
 
@@ -301,7 +269,7 @@ export function SettingsSheet({
         return;
       }
 
-      if (status === "INVALID_PIN") {
+      if (status === "INVALID_SECRET") {
         toast.error("PIN ၄ လုံး သို့မဟုတ် Admin Reset Code မှားယွင်းနေပါသည်");
         setBusy(null);
         return;
@@ -601,271 +569,4 @@ export function SettingsSheet({
 
               {screen === "signin" && (
                 <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="sync-id">User Name / Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
-                    <Input
-                      id="sync-id"
-                      autoComplete="username"
-                      placeholder="User Name / shop@gmail.com / 09xxxxxxxx"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      className="h-11 text-base"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="sync-pw">Password</Label>
-                      <button
-                        type="button"
-                        onClick={() => { setForgotId(identifier); setScreen("forgot"); }}
-                        className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
-                      >
-                        Password မေ့နေပါသလား?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        id="sync-pw"
-                        type={showPw ? "text" : "password"}
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && void handleSignIn()}
-                        className="h-11 pr-11 text-base"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
-                      >
-                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void handleSignIn()} disabled={busy !== null}>
-                    {busy === "signin" ? <Loader2 className="animate-spin" /> : <LogIn />} ဝင်မည် (Sign In)
-                  </Button>
-                  <Button variant="champagne" size="xl" className="w-full" onClick={() => setScreen("register")}>
-                    <UserPlus /> အကောင့်သစ် ဖွင့်မည် (Register)
-                  </Button>
-                </div>
-              )}
-
-              {screen === "register" && (
-                <div className="space-y-2.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-user">User Name (အမည် / ဆိုင်နာမည်)</Label>
-                    <Input
-                      id="reg-user"
-                      placeholder="ဥပမာ - ZuZuTailor"
-                      value={regUsername}
-                      onChange={(e) => setRegUsername(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-id">Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
-                    <Input
-                      id="reg-id"
-                      placeholder="shop@gmail.com သို့မဟုတ် 09xxxxxxxx"
-                      value={regIdentifier}
-                      onChange={(e) => setRegIdentifier(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-pw">Password (အနည်းဆုံး ၆ လုံး)</Label>
-                    <div className="relative">
-                      <Input
-                        id="reg-pw"
-                        type={showRegPw ? "text" : "password"}
-                        placeholder="Password အသစ် ထည့်ပါ"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        className="h-10 pr-10 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegPw((v) => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
-                      >
-                        {showRegPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-confirm-pw">Confirm Password (Password ထပ်ထည့်ပါ)</Label>
-                    <Input
-                      id="reg-confirm-pw"
-                      type={showRegPw ? "text" : "password"}
-                      placeholder="အပေါ်က Password အတိုင်း ပြန်ရိုက်ပါ"
-                      value={regConfirmPw}
-                      onChange={(e) => setRegConfirmPw(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-pin">Recovery PIN (ဂဏန်း ၄ လုံး — Password မေ့လျှင် ပြန်ယူရန်)</Label>
-                    <Input
-                      id="reg-pin"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="ဥပမာ - 1995 (မှတ်မိလွယ်သော ဂဏန်း ၄ လုံး)"
-                      value={regPin}
-                      onChange={(e) => setRegPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      className="h-10 text-sm tracking-widest"
-                    />
-                  </div>
-                  <Button variant="burgundy" size="xl" className="mt-1 w-full" onClick={() => void handleRegister()} disabled={busy !== null}>
-                    {busy === "signup" ? <Loader2 className="animate-spin" /> : <UserPlus />} အကောင့်သစ် အတည်ပြုဖွင့်မည်
-                  </Button>
-                </div>
-              )}
-
-              {screen === "forgot" && (
-                <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setScreen("signin")}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" /> ဝင်မည် စာမျက်နှာသို့ ပြန်သွားရန်
-                  </button>
-                  <div className="rounded-xl bg-secondary/70 p-2.5 text-xs text-muted-foreground">
-                    Password မေ့သွားပါက အကောင့်ဖွင့်စဉ်က သတ်မှတ်ထားသော <b>PIN ဂဏန်း ၄ လုံး</b> (သို့မဟုတ် Admin ထံမှ ရရှိသော <b>RST-... Code</b>) ဖြင့် Password အသစ် ပြန်ပြောင်းနိုင်ပါသည်။
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fg-id">User Name / Email သို့မဟုတ် ဖုန်းနံပါတ်</Label>
-                    <Input
-                      id="fg-id"
-                      placeholder="User Name / shop@gmail.com / 09xxxxxxxx"
-                      value={forgotId}
-                      onChange={(e) => setForgotId(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fg-secret">PIN ၄ လုံး (သို့) Admin Reset Code</Label>
-                    <Input
-                      id="fg-secret"
-                      placeholder="1234 သို့မဟုတ် RST-XXXX-XXXX-XXXXXX"
-                      value={forgotSecret}
-                      onChange={(e) => setForgotSecret(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fg-new-pw">Password အသစ် (အနည်းဆုံး ၆ လုံး)</Label>
-                    <Input
-                      id="fg-new-pw"
-                      type="password"
-                      placeholder="Password အသစ် ထည့်ပါ"
-                      value={forgotNewPw}
-                      onChange={(e) => setForgotNewPw(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fg-confirm-pw">Password အသစ် ထပ်မံအတည်ပြုပါ</Label>
-                    <Input
-                      id="fg-confirm-pw"
-                      type="password"
-                      placeholder="Password အသစ် ထပ်ရိုက်ပါ"
-                      value={forgotConfirmPw}
-                      onChange={(e) => setForgotConfirmPw(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={() => void handleForgotReset()} disabled={busy !== null}>
-                    {busy === "forgot" ? <Loader2 className="animate-spin" /> : <KeyRound />} Password အသစ် ပြန်သတ်မှတ်မည်
-                  </Button>
-                </div>
-              )}
-
-              {screen === "code" && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
-                    <Input
-                      id="sync-email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      placeholder="shop@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-11 text-base"
-                    />
-                  </div>
-                  <Button variant="burgundy" size="xl" className="w-full" onClick={send} disabled={busy !== null}>
-                    {busy === "send" ? <Loader2 className="animate-spin" /> : <Mail />}
-                    Send Verification Code / Code ပို့ရန်
-                  </Button>
-
-                  {sent && (
-                    <div className="space-y-3 border-t border-border pt-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="sync-code">Enter 6-Digit Code</Label>
-                        <Input
-                          id="sync-code"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          pattern="[0-9]*"
-                          maxLength={OTP_LENGTH}
-                          placeholder="••••••"
-                          value={code}
-                          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))}
-                          className="h-12 text-center font-display text-2xl tracking-[0.5em]"
-                        />
-                      </div>
-                      <Button
-                        variant="champagne"
-                        size="xl"
-                        className="w-full"
-                        onClick={verify}
-                        disabled={busy !== null || lockLeft > 0}
-                      >
-                        {busy === "verify" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-                        {lockLeft > 0 ? `${Math.ceil(lockLeft / 1000)} စက္ကန့် စောင့်ပါ` : "Verify & Connect"}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-          <h3 className="font-display text-base font-bold text-primary">Data Backup</h3>
-          <div className="grid gap-2">
-            <Button variant="soft" size="xl" className="h-auto justify-start whitespace-normal py-3 text-left leading-snug" onClick={doExport}>
-              <Download /> Export All Customers (ဆိုင်ရှိ Customer အားလုံး သိမ်းမည်)
-            </Button>
-            <Button
-              variant="soft"
-              size="xl"
-              className="h-auto justify-start whitespace-normal py-3 text-left leading-snug"
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload /> Import All Customers (Customer အားလုံး ပြန်သွင်းမည်)
-            </Button>
-            <Button
-              variant="ghost"
-              size="xl"
-              className="h-auto justify-start whitespace-normal border border-dashed border-gold/50 py-2.5 text-left leading-snug"
-              onClick={() => singleRef.current?.click()}
-            >
-              <UserPlus /> Customer တစ်ယောက်ချင်း ဖိုင် ပြန်သွင်းမည် (Import One Customer)
-            </Button>
-          </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            ပြန်သွင်းသည့်အခါ ရှိပြီးသား Customer များကို မဖျက်ဘဲ Customer တစ်ယောက်ချင်းစီ ပိုမို နောက်ကျသော အချက်အလက်များ ထည့်သွင်းပါသည်။
-          </p>
-          {fileInput(fileRef, false)}
-          {fileInput(singleRef, true)}
-        </section>
-      </SheetContent>
-    </Sheet>
-  );
-}
+                  <div className="space-y
