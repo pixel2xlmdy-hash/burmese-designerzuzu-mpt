@@ -5,8 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v3";
 const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
-const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
-
+const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin";
 const OWNER_EMAILS: string[] = [];
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
