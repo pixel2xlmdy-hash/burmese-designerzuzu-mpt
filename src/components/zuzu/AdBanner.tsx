@@ -15,7 +15,7 @@ const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
 const OWNER_EMAILS = ["pixel2xl.mdy@gmail.com"];
 
 // ခွင့်ပြုထားသော Domain များ (တခြား Domain တွင် ခိုးကူးတင်ပါက ပိတ်ထားမည်)
-const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "localhost", "127.0.0.1"];
+const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
 const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
 
@@ -104,7 +104,9 @@ function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; pl
 
 export function AdBanner() {
   const store = useStore();
-  const userEmail = (store as { user?: { email?: string } })?.user?.email?.toLowerCase() || "";
+  const userEmail = (store as { email?: string | null; user?: { email?: string } })?.email?.toLowerCase()
+    || (store as { user?: { email?: string } })?.user?.email?.toLowerCase()
+    || "";
   const isOwner = OWNER_EMAILS.includes(userEmail);
 
   const [vipInfo, setVipInfo] = useState<{ planLabel: string; expiresAt: number } | null>(null);
@@ -159,13 +161,9 @@ export function AdBanner() {
         }
 
         const currentDeviceId = getHybridDeviceId(userEmail);
-        const { data: rows } = await (supabase as any)
-          .from("vip_devices")
-          .select("plan_label, expires_at")
-          .eq("device_id", currentDeviceId)
-          .gt("expires_at", Date.now())
-          .order("expires_at", { ascending: false })
-          .limit(1);
+        const { data: rows } = await (supabase as any).rpc("check_vip_by_device", {
+          p_device_id: currentDeviceId,
+        });
 
         if (rows && rows.length > 0 && isAuthorizedOrigin()) {
           const restored = { planLabel: rows[0].plan_label || "VIP Plan", expiresAt: Number(rows[0].expires_at) };
@@ -245,39 +243,23 @@ export function AdBanner() {
     setError("");
     try {
       const currentDeviceId = getHybridDeviceId(userEmail);
-      const { data: existing, error: fetchErr } = await (supabase as any)
-        .from("vip_devices")
-        .select("device_id")
-        .eq("code", normalizedCode)
-        .maybeSingle();
+      const { data: claimStatus, error: claimErr } = await (supabase as any).rpc("claim_vip_code", {
+        p_code: normalizedCode,
+        p_device_id: currentDeviceId,
+        p_plan_label: res.planLabel,
+        p_expires_at: res.expiresAt,
+      });
 
-      if (fetchErr) {
+      if (claimErr) {
         setError("အင်တာနက် ချိတ်ဆက်မှု စစ်ဆေးပြီး ပြန်လည်အတည်ပြုပါ");
         setLoading(false);
         return;
       }
 
-      if (existing && existing.device_id !== currentDeviceId) {
+      if (claimStatus === "TAKEN") {
         setError("ဤ VIP Code ကို အခြားဖုန်း/အကောင့်တွင် အသုံးပြုပြီးဖြစ်ပါသည် (1 Device Only)");
         setLoading(false);
         return;
-      }
-
-      if (!existing) {
-        const { error: insertErr } = await (supabase as any)
-          .from("vip_devices")
-          .insert({
-            code: normalizedCode,
-            device_id: currentDeviceId,
-            plan_label: res.planLabel,
-            expires_at: res.expiresAt,
-          });
-
-        if (insertErr) {
-          setError("VIP Code အတည်ပြုမရပါ — ခဏစောင့်ပြီး ပြန်စမ်းကြည့်ပါ");
-          setLoading(false);
-          return;
-        }
       }
 
       const data = { planLabel: res.planLabel, expiresAt: res.expiresAt };
