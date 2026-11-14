@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
-import { Crown, X } from "lucide-react";
+import { Crown, X, Check, ExternalLink } from "lucide-react";
 
-const VIP_STORAGE_KEY = "mpt_tailor_vip_status";
-// ကိုကြီး ငွေရှင်းပြီးသား User တွေကို ပေးမယ့် လျှို့ဝှက် VIP ကုဒ် (နောက်ပိုင်း ပြောင်းလို့ရပါတယ်)
-const VALID_VIP_CODES = ["MPTVIP2026", "ZUZUVIP888", "TAILORPRO99"];
+const VIP_STORAGE_KEY = "mpt_tailor_vip_data";
+
+// ကိုကြီး၏ TikTok Account Link ကို ဤနေရာတွင် အစားထိုးထည့်ပါ
+const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@your_tiktok_username";
+
+// Plan အလိုက် လျှို့ဝှက် VIP ကုဒ်များ (ကိုကြီး စိတ်ကြိုက် ပြောင်းလဲနိုင်ပါသည်)
+const VIP_PLANS: Record<string, { label: string; days: number }> = {
+  MPT1M2026: { label: "1 Month Plan (၁ လစာ)", days: 30 },
+  MPT6M2026: { label: "6 Months Plan (၆ လစာ)", days: 180 },
+  MPT1Y2026: { label: "1 Year Plan (၁ နှစ်စာ)", days: 365 },
+};
 
 export function AdBanner() {
   const [isVip, setIsVip] = useState(false);
@@ -13,27 +21,38 @@ export function AdBanner() {
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(VIP_STORAGE_KEY) === "true") {
+      const raw = localStorage.getItem(VIP_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.expiresAt === "number" && Date.now() < parsed.expiresAt) {
         setIsVip(true);
+      } else {
+        // သက်တမ်းကုန်သွားရင် VIP ဖြုတ်ပြီး ကြော်ငြာပြန်ပြမည်
+        localStorage.removeItem(VIP_STORAGE_KEY);
+        setIsVip(false);
       }
     } catch {}
   }, []);
 
   const handleUnlockVip = () => {
     const trimmed = code.trim().toUpperCase();
-    if (VALID_VIP_CODES.includes(trimmed)) {
+    const plan = VIP_PLANS[trimmed];
+    if (plan) {
+      const expiresAt = Date.now() + plan.days * 24 * 60 * 60 * 1000;
       try {
-        localStorage.setItem(VIP_STORAGE_KEY, "true");
+        localStorage.setItem(
+          VIP_STORAGE_KEY,
+          JSON.stringify({ plan: plan.label, expiresAt })
+        );
       } catch {}
       setIsVip(true);
       setShowModal(false);
       setError("");
     } else {
-      setError("VIP ကုဒ် မှားယွင်းနေပါသည် (Admin ထံ ဆက်သွယ်ပါ)");
+      setError("VIP ကုဒ် မှားယွင်းနေပါသည် (TikTok မှတစ်ဆင့် ဆက်သွယ်မေးမြန်းပါ)");
     }
   };
 
-  // VIP ဖြစ်ပြီးသား User ဆိုရင် ကြော်ငြာ လုံးဝ မပြတော့ပါ
   if (isVip) return null;
 
   return (
@@ -49,16 +68,15 @@ export function AdBanner() {
             className="inline-flex items-center gap-1 rounded-full bg-burgundy px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm"
           >
             <Crown className="h-3 w-3" />
-            ကြော်ငြာဖြုတ်ရန် (VIP)
+            VIP ဝယ်ယူရန် (Ad-Free)
           </button>
         </div>
 
-        {/* နောက်ပိုင်း Google AdSense / AdMob Banner ကုဒ် ထည့်မည့် နေရာ */}
         <div
           id="mpt-ad-slot"
           className="mt-2 flex min-h-[60px] items-center justify-center rounded-xl bg-secondary/70 px-3 py-2 text-center text-xs text-muted-foreground"
         >
-          မြောက်ပြင်သူ (MPT) Tailor Pro — Free Version (ကြော်ငြာနေရာ)
+          မြောက်ပြင်သူ (MPT) Tailor FIT Pro — Free Version (ကြော်ငြာနေရာ)
         </div>
       </div>
 
@@ -68,7 +86,7 @@ export function AdBanner() {
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 font-display text-base font-bold text-primary">
                 <Crown className="h-4 w-4 text-gold" />
-                VIP (ကြော်ငြာမပါ) ဖွင့်ရန်
+                VIP Plan များ (ကြော်ငြာမပါ)
               </h3>
               <button
                 type="button"
@@ -82,27 +100,59 @@ export function AdBanner() {
               </button>
             </div>
 
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              ကြော်ငြာများ ဖျောက်ပြီး သန့်ရှင်းစွာ အသုံးပြုရန် Admin ထံမှ ရရှိထားသော VIP Activation Code ကို ထည့်သွင်းပါ။
-            </p>
+            {/* Plan ရွေးချယ်စရာ စာရင်း */}
+            <div className="mt-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
+                <span className="font-medium">1 Month (၁ လစာ)</span>
+                <span className="font-bold text-primary">3,500 Ks</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
+                <span className="font-medium">6 Months (၆ လစာ)</span>
+                <span className="font-bold text-primary">20,000 Ks</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border-2 border-gold bg-gold/10 px-3 py-2">
+                <span className="flex items-center gap-1 font-bold text-primary">
+                  <Check className="h-3.5 w-3.5 text-gold" />
+                  1 Year (၁ နှစ်စာ)
+                </span>
+                <span className="font-bold text-burgundy">36,000 Ks</span>
+              </div>
+            </div>
 
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="VIP Code ထည့်ပါ (ဥပမာ - MPTVIP2026)"
-              className="mt-3 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase"
-            />
-
-            {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
-
-            <button
-              type="button"
-              onClick={handleUnlockVip}
-              className="mt-4 h-10 w-full rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+            {/* TikTok ဆက်သွယ်ရန် ခလုတ် */}
+            <a
+              href={TIKTOK_CONTACT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-black text-xs font-semibold text-white shadow-sm hover:opacity-90"
             >
-              VIP အတည်ပြုမည်
-            </button>
+              <span>TikTok မှတစ်ဆင့် ဝယ်ယူဆက်သွယ်ရန်</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+
+            <div className="mt-3 border-t border-border/60 pt-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                TikTok မှ VIP Code ရရှိပြီးပါက အောက်တွင် ရိုက်ထည့်၍ ဖွင့်ပါ-
+              </p>
+
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="VIP Code ထည့်ပါ (ဥပမာ - MPT1M2026)"
+                className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase"
+              />
+
+              {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+
+              <button
+                type="button"
+                onClick={handleUnlockVip}
+                className="mt-3 h-10 w-full rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+              >
+                VIP အတည်ပြုမည်
+              </button>
+            </div>
           </div>
         </div>
       )}
