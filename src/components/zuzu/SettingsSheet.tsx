@@ -109,7 +109,7 @@ export function SettingsSheet({
 
   // Forgot Password fields
   const [forgotId, setForgotId] = useState("");
-  const [forgotSecret, setForgotSecret] = useState(""); // PIN 4 လုံး သို့မဟုတ် Admin RST-... Code
+  const [forgotSecret, setForgotSecret] = useState("");
   const [forgotNewPw, setForgotNewPw] = useState("");
   const [forgotConfirmPw, setForgotConfirmPw] = useState("");
 
@@ -162,19 +162,17 @@ export function SettingsSheet({
     setBusy("signin");
     try {
       let loginTarget = rawId;
-      // User Name ဖြင့် ဝင်ရောက်ခြင်းဖြစ်ပါက user_profiles မှ အကောင့်ရှာမည်
+      // User Name ဖြင့် ဝင်ရောက်ခြင်းဖြစ်ပါက လုံခြုံသော RPC Function မှ ရှာမည်
       if (!loginIdentity(rawId)) {
-        const { data: prof } = await (supabase as any)
-          .from("user_profiles")
-          .select("identifier")
-          .ilike("username", rawId)
-          .maybeSingle();
-        if (!prof?.identifier) {
+        const { data: foundIdentifier } = await (supabase as any).rpc("get_login_identifier", {
+          input_username: rawId,
+        });
+        if (!foundIdentifier) {
           toast.error("ဤ User Name ဖြင့် အကောင့် မတွေ့ပါ");
           setBusy(null);
           return;
         }
-        loginTarget = prof.identifier;
+        loginTarget = foundIdentifier;
       }
 
       const n = await passwordSignIn(loginTarget, password);
@@ -218,13 +216,11 @@ export function SettingsSheet({
 
     setBusy("signup");
     try {
-      // User Name ရှိပြီးသား ဟုတ်/မဟုတ် စစ်မည်
-      const { data: dupUser } = await (supabase as any)
-        .from("user_profiles")
-        .select("username")
-        .ilike("username", uName)
-        .maybeSingle();
-      if (dupUser) {
+      // User Name ရှိပြီးသား ဟုတ်/မဟုတ် လုံခြုံသော RPC Function ဖြင့် စစ်မည်
+      const { data: exists } = await (supabase as any).rpc("check_username_exists", {
+        input_username: uName,
+      });
+      if (exists) {
         toast.error("ဤ User Name ကို အခြားသူ အသုံးပြုပြီးဖြစ်ပါသည်");
         setBusy(null);
         return;
@@ -284,39 +280,29 @@ export function SettingsSheet({
 
     setBusy("forgot");
     try {
-      const { data: prof } = await (supabase as any)
-        .from("user_profiles")
-        .select("*")
-        .or(`username.ilike.${rawId},identifier.ilike.${rawId}`)
-        .maybeSingle();
-
       const parsed = loginIdentity(rawId);
-      const targetAuthEmail = prof?.auth_email || parsed?.email;
-      const targetIdentifier = prof?.identifier || rawId.toLowerCase();
+      const isAdminCodeValid =
+        verifyAdminResetCode(secret, rawId) ||
+        (parsed?.email ? verifyAdminResetCode(secret, parsed.email) : false);
 
-      if (!targetAuthEmail) {
+      const cleanPin = secret.replace(/\D/g, "");
+      const targetInput = parsed?.email && isAdminCodeValid ? parsed.email : rawId;
+
+      const { data: status, error: rpcErr } = await (supabase as any).rpc("recover_user_password", {
+        input_id: targetInput,
+        input_pin: cleanPin,
+        is_admin_verified: isAdminCodeValid,
+        new_password: forgotNewPw,
+      });
+
+      if (rpcErr || status === "NOT_FOUND") {
         toast.error("အကောင့် အချက်အလက် ရှာမတွေ့ပါ");
         setBusy(null);
         return;
       }
 
-      const isPinValid = prof?.recovery_pin && prof.recovery_pin === secret.replace(/\D/g, "");
-      const isAdminCodeValid =
-        verifyAdminResetCode(secret, targetIdentifier) || verifyAdminResetCode(secret, rawId);
-
-      if (!isPinValid && !isAdminCodeValid) {
+      if (status === "INVALID_PIN") {
         toast.error("PIN ၄ လုံး သို့မဟုတ် Admin Reset Code မှားယွင်းနေပါသည်");
-        setBusy(null);
-        return;
-      }
-
-      const { error: rpcErr } = await (supabase as any).rpc("admin_reset_user_password", {
-        target_auth_email: targetAuthEmail,
-        new_password: forgotNewPw,
-      });
-
-      if (rpcErr) {
-        toast.error("Password ပြန်သတ်မှတ်မရပါ — အချက်အလက် ပြန်စစ်ပါ");
         setBusy(null);
         return;
       }
