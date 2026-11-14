@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck } from "lucide-react";
+import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
-// အဆင့် (၁) လျှို့ဝှက်တံခါးဖွင့် Passcode
 const ADMIN_GATE_PASS = "ZUZUADMIN888";
-
-// အဆင့် (၂) Admin Login Email နှင့် Password
 const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
 const ADMIN_PASSWORD = "ADMINMAUNGKYAW@#$92";
 
@@ -61,6 +58,7 @@ export function AdBanner() {
   const [adminStep, setAdminStep] = useState<"none" | "login" | "generator">("none");
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
+  const [showAdminPass, setShowAdminPass] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [code, setCode] = useState("");
@@ -107,7 +105,7 @@ export function AdBanner() {
   const handleAdminLogin = () => {
     if (
       adminUserInput.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase() &&
-      adminPassInput === ADMIN_PASSWORD
+      adminPassInput.trim() === ADMIN_PASSWORD
     ) {
       setAdminStep("generator");
       setError("");
@@ -123,9 +121,18 @@ export function AdBanner() {
     setCopied(false);
   };
 
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
     if (!generatedCode) return;
-    navigator.clipboard?.writeText(generatedCode);
+    try {
+      await navigator.clipboard.writeText(generatedCode);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = generatedCode;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
     setCopied(true);
   };
 
@@ -135,6 +142,7 @@ export function AdBanner() {
     setError("");
     setAdminUserInput("");
     setAdminPassInput("");
+    setShowAdminPass(false);
   };
 
   if (vipInfo) {
@@ -198,22 +206,34 @@ export function AdBanner() {
             {adminStep === "login" ? (
               <div className="mt-3 space-y-2.5 text-xs">
                 <p className="text-muted-foreground">
-                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ-
+                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ (သို့မဟုတ် Paste ချပါ)-
                 </p>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={adminUserInput}
                   onChange={(e) => setAdminUserInput(e.target.value)}
                   placeholder="Admin Email"
                   className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
                 />
-                <input
-                  type="password"
-                  value={adminPassInput}
-                  onChange={(e) => setAdminPassInput(e.target.value)}
-                  placeholder="Admin Password"
-                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPass ? "text" : "password"}
+                    autoComplete="off"
+                    value={adminPassInput}
+                    onChange={(e) => setAdminPassInput(e.target.value)}
+                    placeholder="Admin Password"
+                    className="h-10 w-full rounded-xl border border-input bg-background pl-3 pr-10 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPass((v) => !v)}
+                    aria-label={showAdminPass ? "Password ဖျောက်ရန်" : "Password ကြည့်ရန်"}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                  >
+                    {showAdminPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <button
                   type="button"
@@ -245,14 +265,14 @@ export function AdBanner() {
                 </div>
 
                 {generatedCode && (
-                  <div className="mt-2 rounded-xl border border-gold bg-background p-3">
-                    <div className="break-all font-mono text-xs font-bold text-primary">
+                  <div className="mt-2 rounded-xl border-2 border-gold bg-background p-3">
+                    <div className="select-all break-all font-mono text-xs font-bold text-primary">
                       {generatedCode}
                     </div>
                     <button
                       type="button"
                       onClick={handleCopyCode}
-                      className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-burgundy text-xs font-semibold text-primary-foreground"
+                      className="mt-2.5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-black text-xs font-semibold text-white shadow-sm active:scale-95"
                     >
                       <Copy className="h-3.5 w-3.5" />
                       {copied ? "Copy ကူးပြီးပါပြီ ✓" : "Code ကို Copy ကူးမည်"}
