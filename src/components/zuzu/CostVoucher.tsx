@@ -15,22 +15,46 @@ import {
 } from "@/lib/tailor";
 
 const isBurmese = (t: string) => /[\u1000-\u109F]/.test(t);
-
 function BrandLogo({ src }: { src: string }) {
-  const [cur, setCur] = useState(src);
-  useEffect(() => setCur(src), [src]);
+  const [cur, setCur] = useState<string>(LOGO_FALLBACK);
+
+  useEffect(() => {
+    let active = true;
+    const target = src || LOGO_FALLBACK;
+    if (target.startsWith("data:") || target.startsWith("/")) {
+      setCur(target);
+      return;
+    }
+    fetch(target)
+      .then((res) => res.blob())
+      .then((blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (active && typeof reader.result === "string") {
+            setCur(reader.result);
+          }
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {
+        if (active) setCur(LOGO_FALLBACK);
+      });
+    return () => {
+      active = false;
+    };
+  }, [src]);
+
   return (
     <img
       src={cur || LOGO_FALLBACK}
       alt=""
-      crossOrigin={cur.startsWith("data:") || cur.startsWith("/") ? undefined : "anonymous"}
+      decoding="sync"
       onError={() => setCur(LOGO_FALLBACK)}
-      className="h-[78px] w-[104px] shrink-0 rounded-lg bg-ink object-cover"
+      className="h-[78px] w-[104px] shrink-0 rounded-lg bg-transparent object-cover"
       draggable={false}
     />
   );
 }
-
 function Sig({ slot }: { slot: SigSlot }) {
   const text = slot.text?.trim() ?? "";
   if (slot.mode === "type") {
