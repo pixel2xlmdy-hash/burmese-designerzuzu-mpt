@@ -58,16 +58,20 @@ export async function captureNode(node: HTMLElement, pixelRatio = 2): Promise<Bl
     backgroundColor: getComputedStyle(node).backgroundColor,
     style: { transform: "none", margin: "0" },
   };
-  let blob: Blob | null;
+    let blob: Blob | null = null;
   try {
     try {
+      // iOS Safari WebKit warm-up pass so embedded Data URL / SVG logos render cleanly
+      await toBlob(node, opts).catch(() => null);
       blob = await toBlob(node, opts);
     } catch {
+      await toBlob(node, { ...opts, skipFonts: true }).catch(() => null);
       blob = await toBlob(node, { ...opts, skipFonts: true });
     }
   } finally {
     restoreImages();
   }
+
   if (!blob) throw new Error("Empty image");
   return blob;
 }
