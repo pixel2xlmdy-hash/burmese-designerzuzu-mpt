@@ -67,6 +67,7 @@ export function AdBanner() {
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
   const [showAdminPass, setShowAdminPass] = useState(false);
+  const [activeGenTag, setActiveGenTag] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [code, setCode] = useState("");
@@ -149,6 +150,7 @@ export function AdBanner() {
   };
 
   const handleCreateCode = (tag: string, days: number) => {
+    setActiveGenTag(tag);
     setGeneratedCode(generateVipCode(tag, days));
     setCopied(false);
   };
@@ -294,18 +296,28 @@ export function AdBanner() {
                   ဝယ်ယူသူအတွက် သက်တမ်းအလိုက် Random VIP Code အသစ် ထုတ်ယူပါ-
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => handleCreateCode("1M", 30)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
-                    + 1 Month (၃၀ ရက်)
-                  </button>
-                  <button type="button" onClick={() => handleCreateCode("3M", 90)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
-                    + 3 Months (၉၀ ရက်)
-                  </button>
-                  <button type="button" onClick={() => handleCreateCode("6M", 180)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
-                    + 6 Months (၁၈၀ ရက်)
-                  </button>
-                  <button type="button" onClick={() => handleCreateCode("1Y", 365)} className="rounded-xl border-2 border-amber-400 bg-amber-50 py-2 font-bold text-amber-900">
-                    + 1 Year (၃၆၅ ရက်)
-                  </button>
+                  {[
+                    { tag: "1M", days: 30, label: "+ 1 Month (၃၀ ရက်)" },
+                    { tag: "3M", days: 90, label: "+ 3 Months (၉၀ ရက်)" },
+                    { tag: "6M", days: 180, label: "+ 6 Months (၁၈၀ ရက်)" },
+                    { tag: "1Y", days: 365, label: "+ 1 Year (၃၆၅ ရက်)" },
+                  ].map((item) => {
+                    const isSelected = activeGenTag === item.tag;
+                    return (
+                      <button
+                        key={item.tag}
+                        type="button"
+                        onClick={() => handleCreateCode(item.tag, item.days)}
+                        className={`rounded-xl py-2 transition ${
+                          isSelected
+                            ? "border-2 border-amber-400 bg-amber-50 font-bold text-amber-900 shadow-sm"
+                            : "border border-neutral-300 bg-neutral-100 font-semibold text-neutral-800 hover:bg-neutral-200"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {generatedCode && (
