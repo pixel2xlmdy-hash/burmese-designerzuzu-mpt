@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
-import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff, ClipboardPaste } from "lucide-react";
+import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff, ClipboardPaste, Lock } from "lucide-react";
+import { useStore } from "@/lib/store";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
+const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
 const ADMIN_GATE_PASS = "ZUZUADMIN888";
 const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
 const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
+
+// App ပိုင်ရှင် Email များ (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
+const OWNER_EMAILS = ["aungkyaw.ariya92@gmail.com"];
+
+// ခွင့်ပြုထားသော Domain များ (တခြား Domain တွင် ခိုးကူးတင်ပါက ပိတ်ထားမည်)
+const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
 const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
 
@@ -16,6 +24,13 @@ const PLAN_OPTIONS = [
   { id: "6M", name: "6 Months (၆ လစာ)", price: "20,000 Ks" },
   { id: "1Y", name: "1 Year (၁ နှစ်စာ)", price: "36,000 Ks" },
 ];
+
+function isAuthorizedOrigin(): boolean {
+  if (typeof window === "undefined") return true;
+  const host = window.location.hostname.toLowerCase();
+  if (!host) return true; // Android APK local WebView
+  return ALLOWED_HOSTS.some((h) => host === h || host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com"));
+}
 
 function makeSignature(payload: string): string {
   let hash = 5381;
@@ -36,6 +51,7 @@ function generateVipCode(planTag: string, days: number): string {
 }
 
 function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; planLabel?: string; expiresAt?: number } {
+  if (!isAuthorizedOrigin()) return { valid: false };
   const parts = rawCode.trim().toUpperCase().split("-");
   if (parts.length !== 5 || parts[0] !== "MPT") return { valid: false };
   const [, planTag, rand, expHex, sig] = parts;
@@ -60,6 +76,10 @@ function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; pl
 }
 
 export function AdBanner() {
+  const store = useStore();
+  const userEmail = (store as { user?: { email?: string } })?.user?.email?.toLowerCase() || "";
+  const isOwner = OWNER_EMAILS.includes(userEmail);
+
   const [vipInfo, setVipInfo] = useState<{ planLabel: string; expiresAt: number } | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("1Y");
@@ -67,6 +87,7 @@ export function AdBanner() {
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
   const [showAdminPass, setShowAdminPass] = useState(false);
+  const [failCount, setFailCount] = useState(0);
   const [activeGenTag, setActiveGenTag] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
@@ -74,11 +95,29 @@ export function AdBanner() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // DevTools / Inspect Element အခြေခံ ကာကွယ်မှု
+    const onContext = (e: MouseEvent) => {
+      if ((e.target as HTMLElement)?.tagName !== "INPUT") e.preventDefault();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase()))) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("contextmenu", onContext);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("contextmenu", onContext);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(VIP_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed?.expiresAt && Date.now() < parsed.expiresAt) {
+      if (parsed?.expiresAt && Date.now() < parsed.expiresAt && isAuthorizedOrigin()) {
         setVipInfo(parsed);
       } else {
         localStorage.removeItem(VIP_STORAGE_KEY);
@@ -110,9 +149,28 @@ export function AdBanner() {
     }
   };
 
+  const getLockRemainingSec = (): number => {
+    try {
+      const until = Number(localStorage.getItem(ADMIN_LOCK_KEY) || 0);
+      return until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+    } catch {
+      return 0;
+    }
+  };
+
   const handleUnlockOrGate = () => {
+    if (!isAuthorizedOrigin()) {
+      setError("တရားဝင် App မဟုတ်ပါ (Unauthorized Copy)");
+      return;
+    }
+
     const trimmed = code.trim();
     if (trimmed === ADMIN_GATE_PASS) {
+      const lockSec = getLockRemainingSec();
+      if (lockSec > 0) {
+        setError(`လုံခြုံရေးအရ ${lockSec} စက္ကန့် စောင့်ဆိုင်းပြီးမှ ပြန်ဝင်ပါ`);
+        return;
+      }
       setAdminStep("login");
       setError("");
       setCode("");
@@ -136,16 +194,34 @@ export function AdBanner() {
   };
 
   const handleAdminLogin = () => {
+    const lockSec = getLockRemainingSec();
+    if (lockSec > 0) {
+      setError(`Password မှားယွင်းမှုများသဖြင့် ${lockSec} စက္ကန့် Lock ချထားပါသည်`);
+      return;
+    }
+
     if (
       adminUserInput.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase() &&
       adminPassInput.trim() === ADMIN_PASSWORD
     ) {
       setAdminStep("generator");
+      setFailCount(0);
       setError("");
       setAdminUserInput("");
       setAdminPassInput("");
     } else {
-      setError("Username သို့မဟုတ် Password မှားယွင်းနေပါသည်");
+      const nextFail = failCount + 1;
+      setFailCount(nextFail);
+      if (nextFail >= 3) {
+        try {
+          localStorage.setItem(ADMIN_LOCK_KEY, String(Date.now() + 5 * 60 * 1000));
+        } catch {}
+        setAdminStep("none");
+        setFailCount(0);
+        setError("Password ၃ ကြိမ် မှားယွင်းသဖြင့် ၅ မိနစ် Lock ချလိုက်ပါပြီ");
+      } else {
+        setError(`Email သို့မဟုတ် Password မှားယွင်းနေပါသည် (${3 - nextFail} ကြိမ်သာ ကျန်ပါတော့သည်)`);
+      }
     }
   };
 
@@ -178,6 +254,18 @@ export function AdBanner() {
     setAdminPassInput("");
     setShowAdminPass(false);
   };
+
+  // App ပိုင်ရှင် (Owner Email) ဖြစ်ပါက ကြော်ငြာ အလိုအလျောက် ပိတ်ထားမည်
+  if (isOwner) {
+    return (
+      <div className="no-print mx-auto max-w-3xl px-4 pb-4 text-center">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-white px-3 py-1 text-[11px] font-semibold text-neutral-700 shadow-sm">
+          <Crown className="h-3 w-3 text-amber-500" />
+          Owner VIP • Ad-Free Mode
+        </span>
+      </div>
+    );
+  }
 
   if (vipInfo) {
     const expDateStr = new Date(vipInfo.expiresAt).toLocaleDateString("en-GB");
@@ -240,8 +328,9 @@ export function AdBanner() {
 
             {adminStep === "login" ? (
               <div className="mt-3 space-y-2.5 text-xs">
-                <p className="text-neutral-600">
-                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ-
+                <p className="flex items-center gap-1 text-neutral-600">
+                  <Lock className="h-3.5 w-3.5 text-amber-600" />
+                  Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ (၃ ကြိမ်မှားလျှင် Lock ကျပါမည်)-
                 </p>
                 <input
                   type="text"
@@ -414,3 +503,4 @@ export function AdBanner() {
     </div>
   );
 }
+
