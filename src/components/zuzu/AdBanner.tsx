@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { Crown, X, Check, ExternalLink, Copy, KeyRound } from "lucide-react";
+import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck } from "lucide-react";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
-// ကိုကြီးတစ်ယောက်တည်း သိမည့် Admin Passcode (စိတ်ကြိုက် ပြောင်းနိုင်ပါသည်)
-const ADMIN_SECRET_PASS = "ZUZUADMIN888";
+// အဆင့် (၁) လျှို့ဝှက်တံခါးဖွင့် Passcode
+const ADMIN_GATE_PASS = "ZUZUADMIN888";
+
+// အဆင့် (၂) Admin Login Email နှင့် Password
+const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
+const ADMIN_PASSWORD = "ADMINMAUNGKYAW@#$92";
+
 const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
 
 function makeSignature(payload: string): string {
@@ -53,7 +58,9 @@ function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; pl
 export function AdBanner() {
   const [vipInfo, setVipInfo] = useState<{ planLabel: string; expiresAt: number } | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminStep, setAdminStep] = useState<"none" | "login" | "generator">("none");
+  const [adminUserInput, setAdminUserInput] = useState("");
+  const [adminPassInput, setAdminPassInput] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [code, setCode] = useState("");
@@ -72,16 +79,16 @@ export function AdBanner() {
       }
     } catch {}
   }, []);
-  const handleUnlockOrAdmin = () => {
-    const trimmed = code.trim().toUpperCase();
-    if (trimmed === ADMIN_SECRET_PASS) {
-      setIsAdminMode(true);
+  const handleUnlockOrGate = () => {
+    const trimmed = code.trim();
+    if (trimmed === ADMIN_GATE_PASS) {
+      setAdminStep("login");
       setError("");
       setCode("");
       return;
     }
 
-    const res = verifyVipCode(trimmed);
+    const res = verifyVipCode(trimmed.toUpperCase());
     if (res.valid && res.expiresAt && res.planLabel) {
       const data = { planLabel: res.planLabel, expiresAt: res.expiresAt };
       try {
@@ -97,6 +104,20 @@ export function AdBanner() {
     }
   };
 
+  const handleAdminLogin = () => {
+    if (
+      adminUserInput.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase() &&
+      adminPassInput === ADMIN_PASSWORD
+    ) {
+      setAdminStep("generator");
+      setError("");
+      setAdminUserInput("");
+      setAdminPassInput("");
+    } else {
+      setError("Username သို့မဟုတ် Password မှားယွင်းနေပါသည်");
+    }
+  };
+
   const handleCreateCode = (tag: string, days: number) => {
     setGeneratedCode(generateVipCode(tag, days));
     setCopied(false);
@@ -108,7 +129,14 @@ export function AdBanner() {
     setCopied(true);
   };
 
-  // VIP ဖြစ်နေသေးရင် ကြော်ငြာဖျောက်ပြီး သက်တမ်းကုန်မည့်ရက် အသေးလေးသာ ပြထားမည်
+  const resetModal = () => {
+    setShowModal(false);
+    setAdminStep("none");
+    setError("");
+    setAdminUserInput("");
+    setAdminPassInput("");
+  };
+
   if (vipInfo) {
     const expDateStr = new Date(vipInfo.expiresAt).toLocaleDateString("en-GB");
     return (
@@ -130,7 +158,7 @@ export function AdBanner() {
           </span>
           <button
             type="button"
-            onClick={() => { setShowModal(true); setIsAdminMode(false); setError(""); }}
+            onClick={() => { setShowModal(true); setAdminStep("none"); setError(""); }}
             className="inline-flex items-center gap-1 rounded-full bg-burgundy px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm"
           >
             <Crown className="h-3 w-3" />
@@ -152,18 +180,51 @@ export function AdBanner() {
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 font-display text-base font-bold text-primary">
                 <Crown className="h-4 w-4 text-gold" />
-                {isAdminMode ? "Admin VIP Code ထုတ်ရန်" : "VIP Plan များ (ကြော်ငြာမပါ)"}
+                {adminStep === "login"
+                  ? "Admin အတည်ပြုရန်"
+                  : adminStep === "generator"
+                  ? "Admin VIP Code ထုတ်ရန်"
+                  : "VIP Plan များ (ကြော်ငြာမပါ)"}
               </h3>
               <button
                 type="button"
-                onClick={() => { setShowModal(false); setIsAdminMode(false); setError(""); }}
+                onClick={resetModal}
                 className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {isAdminMode ? (
+            {adminStep === "login" ? (
+              <div className="mt-3 space-y-2.5 text-xs">
+                <p className="text-muted-foreground">
+                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ-
+                </p>
+                <input
+                  type="text"
+                  value={adminUserInput}
+                  onChange={(e) => setAdminUserInput(e.target.value)}
+                  placeholder="Admin Email"
+                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
+                />
+                <input
+                  type="password"
+                  value={adminPassInput}
+                  onChange={(e) => setAdminPassInput(e.target.value)}
+                  placeholder="Admin Password"
+                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
+                />
+                {error && <p className="text-xs text-destructive">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleAdminLogin}
+                  className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  ဝင်ရောက်မည်
+                </button>
+              </div>
+            ) : adminStep === "generator" ? (
               <div className="mt-3 space-y-2.5 text-xs">
                 <p className="text-muted-foreground">
                   ဝယ်ယူသူအတွက် သက်တမ်းအလိုက် Random VIP Code အသစ် ထုတ်ယူပါ-
@@ -242,12 +303,12 @@ export function AdBanner() {
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="ဥပမာ - MPT-1M-XXXX-XXXXXX-XXXXXX"
-                    className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs uppercase"
+                    className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
                   />
                   {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
                   <button
                     type="button"
-                    onClick={handleUnlockOrAdmin}
+                    onClick={handleUnlockOrGate}
                     className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
                   >
                     <KeyRound className="h-4 w-4" />
