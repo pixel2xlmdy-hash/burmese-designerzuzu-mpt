@@ -253,7 +253,6 @@ function Index() {
       {splash && <Splash onDone={endSplash} />}
       <div className="no-print">
         <AppHeader store={store} onSettings={() => setSettings(true)} />
-        {isList && <SocialBar />}
       </div>
       {body}
       {isList && (
