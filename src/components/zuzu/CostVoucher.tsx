@@ -128,8 +128,7 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
             <span className="shrink-0 whitespace-nowrap text-muted-foreground">{label}:</span>
             <span className="whitespace-nowrap font-semibold">{value || "—"}</span>
           </div>
-        ))}
-      </div>
+        ))}     
           </div>
 
           {/* Items */}
