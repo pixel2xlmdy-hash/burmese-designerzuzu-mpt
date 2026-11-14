@@ -21,7 +21,7 @@ function BrandLogo({ src }: { src: string }) {
   useEffect(() => {
     let active = true;
     const target = src || LOGO_FALLBACK;
-    if (target.startsWith("data:") || target.startsWith("/")) {
+    if (target.startsWith("data:")) {
       setCur(target);
       return;
     }
@@ -124,10 +124,10 @@ export const CostVoucher = forwardRef<HTMLDivElement, { data: CostVoucherData; b
                 ["Garment Type", data.garmentType],
               ] as const
             ).map(([label, value]) => (
-              <div key={label} className="flex items-baseline gap-1.5 border-b border-dotted border-border py-[2px]">
-                <span className="shrink-0 text-muted-foreground">{label}:</span>
-                <span className="min-w-0 truncate font-semibold">{value || "—"}</span>
-              </div>
+              <div key={label} className="flex flex-wrap items-baseline gap-x-1.5 border-b border-dotted border-border py-[3px]">
+  <span className="shrink-0 text-muted-foreground">{label}:</span>
+  <span className="min-w-0 break-words font-semibold">{value || "—"}</span>
+</div>
             ))}
           </div>
 
