@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff, ClipboardPaste } from "lucide-react";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
 const ADMIN_GATE_PASS = "ZUZUADMIN888";
 const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
-const ADMIN_PASSWORD = "ADMINMAUNGKYAW@#$92";
+const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
 
 const SIGN_SALT = "MPT_ZUZU_2026_PRO_KEY";
+
+const PLAN_OPTIONS = [
+  { id: "1M", name: "1 Month (၁ လစာ)", price: "3,500 Ks" },
+  { id: "3M", name: "3 Months (၃ လစာ)", price: "10,000 Ks" },
+  { id: "6M", name: "6 Months (၆ လစာ)", price: "20,000 Ks" },
+  { id: "1Y", name: "1 Year (၁ နှစ်စာ)", price: "36,000 Ks" },
+];
 
 function makeSignature(payload: string): string {
   let hash = 5381;
@@ -55,6 +62,7 @@ function verifyVipCode(rawCode: string): { valid: boolean; expired?: boolean; pl
 export function AdBanner() {
   const [vipInfo, setVipInfo] = useState<{ planLabel: string; expiresAt: number } | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("1Y");
   const [adminStep, setAdminStep] = useState<"none" | "login" | "generator">("none");
   const [adminUserInput, setAdminUserInput] = useState("");
   const [adminPassInput, setAdminPassInput] = useState("");
@@ -77,6 +85,30 @@ export function AdBanner() {
       }
     } catch {}
   }, []);
+  const readClipboardText = async (): Promise<string> => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch {
+      return "";
+    }
+  };
+
+  const handlePasteVipCode = async () => {
+    const text = await readClipboardText();
+    if (text) {
+      setCode(text.trim());
+      setError("");
+    }
+  };
+
+  const handlePasteAdminPass = async () => {
+    const text = await readClipboardText();
+    if (text) {
+      setAdminPassInput(text.trim());
+      setError("");
+    }
+  };
+
   const handleUnlockOrGate = () => {
     const trimmed = code.trim();
     if (trimmed === ADMIN_GATE_PASS) {
@@ -149,8 +181,8 @@ export function AdBanner() {
     const expDateStr = new Date(vipInfo.expiresAt).toLocaleDateString("en-GB");
     return (
       <div className="no-print mx-auto max-w-3xl px-4 pb-4 text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-card px-3 py-1 text-[11px] text-muted-foreground shadow-sm">
-          <Crown className="h-3 w-3 text-gold" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-white px-3 py-1 text-[11px] font-medium text-neutral-700 shadow-sm">
+          <Crown className="h-3 w-3 text-amber-500" />
           {vipInfo.planLabel} • သက်တမ်းကုန်ရက်: {expDateStr}
         </span>
       </div>
@@ -159,7 +191,7 @@ export function AdBanner() {
 
   return (
     <div className="no-print mx-auto max-w-3xl px-4 pb-6">
-      <div className="rounded-2xl border border-gold/40 bg-card p-3 shadow-soft">
+      <div className="rounded-2xl border border-amber-400/50 bg-card p-3 shadow-soft">
         <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
           <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Sponsored • ကြော်ငြာ
@@ -167,9 +199,10 @@ export function AdBanner() {
           <button
             type="button"
             onClick={() => { setShowModal(true); setAdminStep("none"); setError(""); }}
-            className="inline-flex items-center gap-1 rounded-full bg-burgundy px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm"
+            style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold shadow-sm hover:opacity-90"
           >
-            <Crown className="h-3 w-3" />
+            <Crown className="h-3 w-3 text-amber-300" />
             VIP ဝယ်ယူရန် (Ad-Free)
           </button>
         </div>
@@ -184,10 +217,10 @@ export function AdBanner() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 text-neutral-900 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 font-display text-base font-bold text-primary">
-                <Crown className="h-4 w-4 text-gold" />
+              <h3 style={{ color: "#7c1d2e" }} className="flex items-center gap-1.5 font-display text-base font-bold">
+                <Crown className="h-4 w-4 text-amber-500" />
                 {adminStep === "login"
                   ? "Admin အတည်ပြုရန်"
                   : adminStep === "generator"
@@ -197,7 +230,7 @@ export function AdBanner() {
               <button
                 type="button"
                 onClick={resetModal}
-                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
+                className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -205,8 +238,8 @@ export function AdBanner() {
 
             {adminStep === "login" ? (
               <div className="mt-3 space-y-2.5 text-xs">
-                <p className="text-muted-foreground">
-                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ (သို့မဟုတ် Paste ချပါ)-
+                <p className="text-neutral-600">
+                  ဆက်လက်လုပ်ဆောင်ရန် Admin Email နှင့် Password ကို ရိုက်ထည့်ပါ-
                 </p>
                 <input
                   type="text"
@@ -214,31 +247,42 @@ export function AdBanner() {
                   value={adminUserInput}
                   onChange={(e) => setAdminUserInput(e.target.value)}
                   placeholder="Admin Email"
-                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
+                  className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-xs text-neutral-900"
                 />
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type={showAdminPass ? "text" : "password"}
                     autoComplete="off"
                     value={adminPassInput}
                     onChange={(e) => setAdminPassInput(e.target.value)}
                     placeholder="Admin Password"
-                    className="h-10 w-full rounded-xl border border-input bg-background pl-3 pr-10 text-xs"
+                    className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 pl-3 pr-24 text-xs text-neutral-900"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminPass((v) => !v)}
-                    aria-label={showAdminPass ? "Password ဖျောက်ရန်" : "Password ကြည့်ရန်"}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                  >
-                    {showAdminPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="absolute right-1.5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handlePasteAdminPass}
+                      className="inline-flex items-center gap-0.5 rounded-lg bg-neutral-200 px-2 py-1 text-[10px] font-bold text-neutral-800 hover:bg-neutral-300"
+                    >
+                      <ClipboardPaste className="h-3 w-3" />
+                      Paste
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPass((v) => !v)}
+                      aria-label={showAdminPass ? "Password ဖျောက်ရန်" : "Password ကြည့်ရန်"}
+                      className="rounded-lg p-1 text-neutral-600 hover:bg-neutral-200"
+                    >
+                      {showAdminPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-                {error && <p className="text-xs text-destructive">{error}</p>}
+                {error && <p className="text-xs font-medium text-red-600">{error}</p>}
                 <button
                   type="button"
                   onClick={handleAdminLogin}
-                  className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+                  style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
+                  className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90"
                 >
                   <ShieldCheck className="h-4 w-4" />
                   ဝင်ရောက်မည်
@@ -246,27 +290,27 @@ export function AdBanner() {
               </div>
             ) : adminStep === "generator" ? (
               <div className="mt-3 space-y-2.5 text-xs">
-                <p className="text-muted-foreground">
+                <p className="text-neutral-600">
                   ဝယ်ယူသူအတွက် သက်တမ်းအလိုက် Random VIP Code အသစ် ထုတ်ယူပါ-
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => handleCreateCode("1M", 30)} className="rounded-xl border border-border bg-secondary py-2 font-semibold hover:bg-secondary/80">
+                  <button type="button" onClick={() => handleCreateCode("1M", 30)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
                     + 1 Month (၃၀ ရက်)
                   </button>
-                  <button type="button" onClick={() => handleCreateCode("3M", 90)} className="rounded-xl border border-border bg-secondary py-2 font-semibold hover:bg-secondary/80">
+                  <button type="button" onClick={() => handleCreateCode("3M", 90)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
                     + 3 Months (၉၀ ရက်)
                   </button>
-                  <button type="button" onClick={() => handleCreateCode("6M", 180)} className="rounded-xl border border-border bg-secondary py-2 font-semibold hover:bg-secondary/80">
+                  <button type="button" onClick={() => handleCreateCode("6M", 180)} className="rounded-xl border border-neutral-300 bg-neutral-100 py-2 font-semibold text-neutral-800 hover:bg-neutral-200">
                     + 6 Months (၁၈၀ ရက်)
                   </button>
-                  <button type="button" onClick={() => handleCreateCode("1Y", 365)} className="rounded-xl border border-gold bg-gold/15 py-2 font-bold text-primary">
+                  <button type="button" onClick={() => handleCreateCode("1Y", 365)} className="rounded-xl border-2 border-amber-400 bg-amber-50 py-2 font-bold text-amber-900">
                     + 1 Year (၃၆၅ ရက်)
                   </button>
                 </div>
 
                 {generatedCode && (
-                  <div className="mt-2 rounded-xl border-2 border-gold bg-background p-3">
-                    <div className="select-all break-all font-mono text-xs font-bold text-primary">
+                  <div className="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/50 p-3">
+                    <div className="select-all break-all font-mono text-xs font-bold text-neutral-900">
                       {generatedCode}
                     </div>
                     <button
@@ -283,25 +327,29 @@ export function AdBanner() {
             ) : (
               <>
                 <div className="mt-3 space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
-                    <span className="font-medium">1 Month (၁ လစာ)</span>
-                    <span className="font-bold text-primary">3,500 Ks</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
-                    <span className="font-medium">3 Months (၃ လစာ)</span>
-                    <span className="font-bold text-primary">10,000 Ks</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-3 py-2">
-                    <span className="font-medium">6 Months (၆ လစာ)</span>
-                    <span className="font-bold text-primary">20,000 Ks</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border-2 border-gold bg-gold/10 px-3 py-2">
-                    <span className="flex items-center gap-1 font-bold text-primary">
-                      <Check className="h-3.5 w-3.5 text-gold" />
-                      1 Year (၁ နှစ်စာ)
-                    </span>
-                    <span className="font-bold text-burgundy">36,000 Ks</span>
-                  </div>
+                  {PLAN_OPTIONS.map((p) => {
+                    const active = selectedPlan === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPlan(p.id)}
+                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${
+                          active
+                            ? "border-2 border-amber-500 bg-amber-50 font-bold"
+                            : "border border-neutral-200 bg-neutral-50 font-medium hover:bg-neutral-100"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 text-neutral-900">
+                          {active && <Check className="h-3.5 w-3.5 text-amber-600" />}
+                          {p.name}
+                        </span>
+                        <span style={{ color: "#7c1d2e" }} className="font-bold">
+                          {p.price}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <a
@@ -314,22 +362,33 @@ export function AdBanner() {
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
 
-                <div className="mt-3 border-t border-border/60 pt-3">
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <div className="mt-3 border-t border-neutral-200 pt-3">
+                  <p className="text-[11px] leading-relaxed text-neutral-600">
                     TikTok မှ ရရှိထားသော VIP Code ကို အောက်တွင် ရိုက်ထည့်ပါ-
                   </p>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="ဥပမာ - MPT-1M-XXXX-XXXXXX-XXXXXX"
-                    className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs"
-                  />
-                  {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+                  <div className="relative mt-2 flex items-center">
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="MPT-1M-XXXX-XXXXXX-XXXXXX"
+                      className="h-10 w-full rounded-xl border border-neutral-300 bg-neutral-50 pl-3 pr-20 text-xs text-neutral-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={handlePasteVipCode}
+                      className="absolute right-1.5 inline-flex items-center gap-0.5 rounded-lg bg-neutral-200 px-2.5 py-1 text-[11px] font-bold text-neutral-800 hover:bg-neutral-300"
+                    >
+                      <ClipboardPaste className="h-3 w-3" />
+                      Paste
+                    </button>
+                  </div>
+                  {error && <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>}
                   <button
                     type="button"
                     onClick={handleUnlockOrGate}
-                    className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-burgundy text-sm font-semibold text-primary-foreground"
+                    style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90"
                   >
                     <KeyRound className="h-4 w-4" />
                     VIP အတည်ပြုမည်
