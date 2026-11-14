@@ -177,7 +177,7 @@ export const COST_SIGNATURES: { key: CostSigKey; en: string; my: string }[] = [
   { key: "approved", en: "Approved By", my: "ခွင့်ပြုသူ" },
 ];
 
-export const DEFAULT_COST_BRAND: CostBrand = {
+export const DEFAULT_COST_BRAND: Required<CostBrand> = {
   logo: "/brand-logo.jpg",
   designer: "Designer: Zu Zu",
   phones: "09789104156 | 09940744566",
