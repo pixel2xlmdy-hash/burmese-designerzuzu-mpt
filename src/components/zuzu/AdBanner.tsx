@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Crown, X, Check, ExternalLink, Copy, KeyRound, ShieldCheck, Eye, EyeOff, ClipboardPaste, Lock } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 
 const VIP_STORAGE_KEY = "mpt_tailor_vip_v2";
 const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
@@ -10,8 +11,9 @@ const ADMIN_GATE_PASS = "ZUZUADMIN888";
 const ADMIN_USERNAME = "aungkyaw.ariya92@gmail.com";
 const ADMIN_PASSWORD = "ADMINAUNGKYAW@#$92";
 
-// App ပိုင်ရှင် Email များ (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
+// App ပိုင်ရှင် Email (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
 const OWNER_EMAILS = ["pixel2xl.mdy@gmail.com"];
+
 // ခွင့်ပြုထားသော Domain များ (တခြား Domain တွင် ခိုးကူးတင်ပါက ပိတ်ထားမည်)
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "localhost", "127.0.0.1"];
 
@@ -38,6 +40,22 @@ function makeSignature(payload: string): string {
     hash = ((hash << 5) + hash + full.charCodeAt(i)) >>> 0;
   }
   return hash.toString(36).toUpperCase().padStart(6, "0").slice(0, 6);
+}
+
+// Uninstall လုပ်ပြီး ပြန်သွင်းလည်း မပြောင်းလဲသော Hardware + Email Hybrid ID
+function getHybridDeviceId(userEmail: string): string {
+  if (userEmail) {
+    return `email:${userEmail.trim().toLowerCase()}`;
+  }
+  if (typeof window === "undefined") return "hw:unknown";
+  const rawHw = [
+    navigator.platform || "",
+    navigator.language || "",
+    navigator.hardwareConcurrency || "",
+    `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  ].join("|");
+  return `hw:${makeSignature(rawHw)}`;
 }
 
 function generateVipCode(planTag: string, days: number): string {
@@ -91,10 +109,10 @@ export function AdBanner() {
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // DevTools / Inspect Element အခြေခံ ကာကွယ်မှု
     const onContext = (e: MouseEvent) => {
       if ((e.target as HTMLElement)?.tagName !== "INPUT") e.preventDefault();
     };
@@ -111,19 +129,41 @@ export function AdBanner() {
     };
   }, []);
 
+  // LocalStorage + Cloud Database မှ VIP သက်တမ်း စစ်ဆေးခြင်း
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(VIP_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.expiresAt && Date.now() < parsed.expiresAt && isAuthorizedOrigin()) {
-        setVipInfo(parsed);
-      } else {
-        localStorage.removeItem(VIP_STORAGE_KEY);
-        setVipInfo(null);
-      }
-    } catch {}
-  }, []);
+    const checkVipStatus = async () => {
+      try {
+        const raw = localStorage.getItem(VIP_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.expiresAt && Date.now() < parsed.expiresAt && isAuthorizedOrigin()) {
+            setVipInfo(parsed);
+            return;
+          } else {
+            localStorage.removeItem(VIP_STORAGE_KEY);
+            setVipInfo(null);
+          }
+        }
+
+        // Uninstall လုပ်ပြီး ပြန်သွင်းထားသူဖြစ်ပါက Cloud Database မှ အလိုအလျောက် ပြန်ဆွဲတင်ပေးမည်
+        const currentDeviceId = getHybridDeviceId(userEmail);
+        const { data: rows } = await (supabase as any)
+          .from("vip_devices")
+          .select("plan_label, expires_at")
+          .eq("device_id", currentDeviceId)
+          .gt("expires_at", Date.now())
+          .order("expires_at", { ascending: false })
+          .limit(1);
+
+        if (rows && rows.length > 0 && isAuthorizedOrigin()) {
+          const restored = { planLabel: rows[0].plan_label || "VIP Plan", expiresAt: Number(rows[0].expires_at) };
+          localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(restored));
+          setVipInfo(restored);
+        }
+      } catch {}
+    };
+    checkVipStatus();
+  }, [userEmail]);
   const readClipboardText = async (): Promise<string> => {
     try {
       return await navigator.clipboard.readText();
@@ -157,7 +197,7 @@ export function AdBanner() {
     }
   };
 
-  const handleUnlockOrGate = () => {
+  const handleUnlockOrGate = async () => {
     if (!isAuthorizedOrigin()) {
       setError("တရားဝင် App မဟုတ်ပါ (Unauthorized Copy)");
       return;
@@ -176,8 +216,59 @@ export function AdBanner() {
       return;
     }
 
-    const res = verifyVipCode(trimmed.toUpperCase());
-    if (res.valid && res.expiresAt && res.planLabel) {
+    const normalizedCode = trimmed.toUpperCase();
+    const res = verifyVipCode(normalizedCode);
+
+    if (res.expired) {
+      setError("ဤ VIP Code သည် သက်တမ်းကုန်ဆုံးသွားပါပြီ (Code အသစ် ထပ်မံဝယ်ယူပါ)");
+      return;
+    }
+
+    if (!res.valid || !res.expiresAt || !res.planLabel) {
+      setError("VIP ကုဒ် မှားယွင်းနေပါသည် (TikTok မှတစ်ဆင့် ဆက်သွယ်ဝယ်ယူပါ)");
+      return;
+    }
+
+    // 1-Device / 1-Account Lock စစ်ဆေးခြင်း
+    setLoading(true);
+    setError("");
+    try {
+      const currentDeviceId = getHybridDeviceId(userEmail);
+      const { data: existing, error: fetchErr } = await (supabase as any)
+        .from("vip_devices")
+        .select("device_id")
+        .eq("code", normalizedCode)
+        .maybeSingle();
+
+      if (fetchErr) {
+        setError("အင်တာနက် ချိတ်ဆက်မှု စစ်ဆေးပြီး ပြန်လည်အတည်ပြုပါ");
+        setLoading(false);
+        return;
+      }
+
+      if (existing && existing.device_id !== currentDeviceId) {
+        setError("ဤ VIP Code ကို အခြားဖုန်း/အကောင့်တွင် အသုံးပြုပြီးဖြစ်ပါသည် (1 Device Only)");
+        setLoading(false);
+        return;
+      }
+
+      if (!existing) {
+        const { error: insertErr } = await (supabase as any)
+          .from("vip_devices")
+          .insert({
+            code: normalizedCode,
+            device_id: currentDeviceId,
+            plan_label: res.planLabel,
+            expires_at: res.expiresAt,
+          });
+
+        if (insertErr) {
+          setError("VIP Code အတည်ပြုမရပါ — ခဏစောင့်ပြီး ပြန်စမ်းကြည့်ပါ");
+          setLoading(false);
+          return;
+        }
+      }
+
       const data = { planLabel: res.planLabel, expiresAt: res.expiresAt };
       try {
         localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(data));
@@ -185,10 +276,10 @@ export function AdBanner() {
       setVipInfo(data);
       setShowModal(false);
       setError("");
-    } else if (res.expired) {
-      setError("ဤ VIP Code သည် သက်တမ်းကုန်ဆုံးသွားပါပြီ (Code အသစ် ထပ်မံဝယ်ယူပါ)");
-    } else {
-      setError("VIP ကုဒ် မှားယွင်းနေပါသည် (TikTok မှတစ်ဆင့် ဆက်သွယ်ဝယ်ယူပါ)");
+    } catch {
+      setError("ချိတ်ဆက်မှု အဆင်မပြေပါ — အင်တာနက်ဖွင့်ပြီး ပြန်စမ်းကြည့်ပါ");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -254,7 +345,6 @@ export function AdBanner() {
     setShowAdminPass(false);
   };
 
-  // App ပိုင်ရှင် (Owner Email) ဖြစ်ပါက ကြော်ငြာ အလိုအလျောက် ပိတ်ထားမည်
   if (isOwner) {
     return (
       <div className="no-print mx-auto max-w-3xl px-4 pb-4 text-center">
@@ -342,7 +432,7 @@ export function AdBanner() {
                 <div className="relative flex items-center">
                   <input
                     type={showAdminPass ? "text" : "password"}
-                    autoComplete="off"
+                                        autoComplete="off"
                     value={adminPassInput}
                     onChange={(e) => setAdminPassInput(e.target.value)}
                     placeholder="Admin Password"
@@ -464,7 +554,7 @@ export function AdBanner() {
 
                 <div className="mt-3 border-t border-neutral-200 pt-3">
                   <p className="text-[11px] leading-relaxed text-neutral-600">
-                    TikTok မှ ရရှိထားသော VIP Code ကို အောက်တွင် ရိုက်ထည့်ပါ-
+                    TikTok မှ ရရှိထားသော VIP Code ကို အောက်တွင် ရိုက်ထည့်ပါ (1 Device Only)-
                   </p>
                   <div className="relative mt-2 flex items-center">
                     <input
@@ -486,12 +576,13 @@ export function AdBanner() {
                   {error && <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>}
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={handleUnlockOrGate}
                     style={{ backgroundColor: "#7c1d2e", color: "#ffffff" }}
-                    className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90"
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 disabled:opacity-60"
                   >
                     <KeyRound className="h-4 w-4" />
-                    VIP အတည်ပြုမည်
+                    {loading ? "စစ်ဆေးနေပါသည်..." : "VIP အတည်ပြုမည်"}
                   </button>
                 </div>
               </>
@@ -502,4 +593,3 @@ export function AdBanner() {
     </div>
   );
 }
-
