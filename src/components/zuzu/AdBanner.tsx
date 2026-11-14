@@ -7,12 +7,8 @@ const VIP_STORAGE_KEY = "mpt_tailor_vip_v3";
 const ADMIN_LOCK_KEY = "mpt_admin_lock_until";
 const TIKTOK_CONTACT_URL = "https://www.tiktok.com/@myinzulwin7?_r=1&_t=ZS-900AAD2pDFd";
 
-// App ပိုင်ရှင် Email (Code ထည့်စရာမလိုဘဲ အလိုအလျောက် ကြော်ငြာပိတ်ပေးမည်)
 const OWNER_EMAILS: string[] = [];
 const ALLOWED_HOSTS = ["zu-mpt.lovable.app", "burmese-designerzuzu-mpt.lovable.app", "localhost", "127.0.0.1"];
-
-const ADSTERRA_KEY = "e43dc76571a72f3e622f9db5a6edf48a";
-const ADSTERRA_SRC = "https://bauval.org/22/e43dc76571a72f3e622f9db5a6edf48a";
 
 const PLAN_OPTIONS = [
   { id: "1M", name: "1 Month (၁ လစာ)", price: "3,500 Ks" },
@@ -36,7 +32,6 @@ function hashDeviceFingerprint(raw: string): string {
   return hash.toString(36).toUpperCase().padStart(6, "0");
 }
 
-// Uninstall လုပ်ပြီး ပြန်သွင်းလည်း မပြောင်းလဲသော Hardware + Email Hybrid ID
 function getHybridDeviceId(userEmail: string): string {
   if (userEmail) {
     return `email:${userEmail.trim().toLowerCase()}`;
@@ -52,6 +47,71 @@ function getHybridDeviceId(userEmail: string): string {
   return `hw:${hashDeviceFingerprint(rawHw)}`;
 }
 
+// အပေါ် Header ("MPT FIT TAILOR PRO" စာသားပေါ်) တွင် ✕ နှိပ်ဖျောက်လို့ရသော 468x60 Banner Overlay
+export function HeaderAdOverlay() {
+  const store = useStore();
+  const userEmail = (store as { email?: string | null; user?: { email?: string } })?.email?.toLowerCase()
+    || (store as { user?: { email?: string } })?.user?.email?.toLowerCase()
+    || "";
+  const isOwner = OWNER_EMAILS.includes(userEmail);
+  const [dismissed, setDismissed] = useState(false);
+  const [isVip, setIsVip] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VIP_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.expiresAt && Date.now() < parsed.expiresAt) {
+          setIsVip(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  if (isOwner || isVip || dismissed) return null;
+
+  const headerAdHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><style>html,body{margin:0;padding:0;width:468px;height:60px;overflow:hidden;background:transparent;}</style></head>
+<body>
+<script>
+  atOptions = {
+    'key' : '2309f03b8a6fbe79e4bb43f9912b91a9',
+    'format' : 'iframe',
+    'height' : 60,
+    'width' : 468,
+    'params' : {}
+  };
+</script>
+<script src="https://bauval.org/22/2309f03b8a6fbe79e4bb43f9912b91a9"></script>
+</body>
+</html>`;
+
+  return (
+    <div className="no-print relative z-20 flex items-center justify-center overflow-hidden rounded-xl border border-amber-400/70 bg-white/95 shadow-sm" style={{ width: "220px", height: "48px" }}>
+      <div style={{ width: "468px", height: "60px", transform: "scale(0.47)", transformOrigin: "top left", position: "absolute", top: "9px", left: 0 }}>
+        <iframe
+          title="Header Ad"
+          srcDoc={headerAdHtml}
+          width={468}
+          height={60}
+          scrolling="no"
+          frameBorder={0}
+          className="border-0"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Close Ad"
+        className="absolute right-1 top-1 z-30 flex h-5 w-5 items-center justify-center rounded-full bg-black/75 text-[11px] font-bold text-white shadow hover:bg-black"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
 export function AdBanner() {
   const store = useStore();
   const userEmail = (store as { email?: string | null; user?: { email?: string } })?.email?.toLowerCase()
@@ -78,6 +138,7 @@ export function AdBanner() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const adSlotRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const checkVipStatus = async () => {
@@ -108,6 +169,27 @@ export function AdBanner() {
     };
     checkVipStatus();
   }, [userEmail]);
+
+  // အောက်ခြေ 320x50 Direct Script Injection (Domain အစစ်ဖြင့် ကြော်ငြာ တက်စေရန်)
+  useEffect(() => {
+    if (isOwner || vipInfo) return;
+    const container = adSlotRef.current;
+    if (!container) return;
+
+    container.innerHTML = "";
+    const optScript = document.createElement("script");
+    optScript.type = "text/javascript";
+    optScript.text = `window.atOptions = { 'key' : 'e43dc76571a72f3e622f9db5a6edf48a', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };`;
+
+    const invokeScript = document.createElement("script");
+    invokeScript.type = "text/javascript";
+    invokeScript.src = "https://bauval.org/22/e43dc76571a72f3e622f9db5a6edf48a";
+    invokeScript.async = true;
+
+    container.appendChild(optScript);
+    container.appendChild(invokeScript);
+  }, [isOwner, vipInfo]);
+
   const readClipboardText = async (): Promise<string> => {
     try {
       return await navigator.clipboard.readText();
@@ -156,7 +238,6 @@ export function AdBanner() {
     setLoading(true);
     setError("");
     try {
-      // 1. Admin Gate ဟုတ်/မဟုတ် Server တွင် စစ်ဆေးခြင်း
       const { data: isGate } = await (supabase as any).rpc("verify_admin_gate", {
         input_gate: trimmed,
       });
@@ -175,7 +256,6 @@ export function AdBanner() {
         return;
       }
 
-      // 2. VIP Code ကို Server တွင် အတည်ပြုပြီး 1-Device Lock ချခြင်း
       const currentDeviceId = getHybridDeviceId(userEmail);
       const { data: res, error: rpcErr } = await (supabase as any).rpc("redeem_server_vip_code", {
         p_code: trimmed,
@@ -338,30 +418,6 @@ export function AdBanner() {
     setShowAdminPass(false);
   };
 
-  const adSlotRef = useRef<HTMLDivElement>(null);
-  const showAds = !isOwner && !vipInfo;
-
-  // Inject the Adsterra banner directly into the page (real origin, no sandbox)
-  useEffect(() => {
-    if (!showAds) return;
-    const slot = adSlotRef.current;
-    if (!slot) return;
-    slot.innerHTML = "";
-    const w = window as unknown as { atOptions?: Record<string, unknown> };
-    w.atOptions = { key: ADSTERRA_KEY, format: "iframe", height: 50, width: 320, params: {} };
-    const inline = document.createElement("script");
-    inline.type = "text/javascript";
-    inline.text = `window.atOptions = { 'key': '${ADSTERRA_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
-    slot.appendChild(inline);
-    const external = document.createElement("script");
-    external.type = "text/javascript";
-    external.src = ADSTERRA_SRC;
-    slot.appendChild(external);
-    return () => {
-      slot.innerHTML = "";
-    };
-  }, [showAds]);
-
   if (isOwner) {
     return (
       <div className="no-print mx-auto max-w-3xl px-4 pb-4 text-center">
@@ -406,7 +462,7 @@ export function AdBanner() {
         <div
           id="mpt-ad-slot"
           ref={adSlotRef}
-          className="mt-2 flex min-h-[60px] items-center justify-center overflow-hidden rounded-xl bg-secondary/70 px-3 py-2"
+          className="mt-2 flex min-h-[54px] w-full items-center justify-center overflow-hidden rounded-xl bg-secondary/40"
         />
       </div>
 
