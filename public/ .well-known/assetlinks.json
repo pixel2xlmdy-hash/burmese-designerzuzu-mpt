@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.mpt.tailorpro",
+        "sha256_cert_fingerprints": ["A1:DB:A4:53:8E:31:0B:1B:CF:8B:FD:F0:55:D1:7C:45:A5:5B:10:A9:5F:30:7A:7D:04:5A:E6:4A:9C:A1:B6:55"]
+      }
+    }]
