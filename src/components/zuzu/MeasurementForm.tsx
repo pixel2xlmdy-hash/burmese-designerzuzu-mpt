@@ -55,11 +55,11 @@ export function MeasurementForm({
     };
   });
 
-  const [elbowNote, setElbowNote] = useState<string>(record?.data?.elbowNote || "");
-  const [designerSigMode, setDesignerSigMode] = useState<any>(record?.data?.designerSigMode || "draw");
-  const [designerSigText, setDesignerSigText] = useState<string>(record?.data?.designerSigText || "");
-  const [customerSigMode, setCustomerSigMode] = useState<any>(record?.data?.customerSigMode || "draw");
-  const [customerSigText, setCustomerSigText] = useState<string>(record?.data?.customerSigText || "");
+  const [elbowNote, setElbowNote] = useState<string>((record?.data as any)?.elbowNote || "");
+  const [designerSigMode, setDesignerSigMode] = useState<any>((record?.data as any)?.designerSigMode || "draw");
+  const [designerSigText, setDesignerSigText] = useState<string>((record?.data as any)?.designerSigText || "");
+  const [customerSigMode, setCustomerSigMode] = useState<any>((record?.data as any)?.customerSigMode || "draw");
+  const [customerSigText, setCustomerSigText] = useState<string>((record?.data as any)?.customerSigText || "");
 
   const setSlot = (key: string, index: number, value: string) => {
     setData((d: any) => {
@@ -196,7 +196,6 @@ export function MeasurementForm({
           })}
         </div>
       </Section>
-
       <Section title="လက် / ကာ (Multi-slot)">
         {slotRow("backwait", "ကျောကုန်းအရှည် (Back Waist Length)")}
         {slotRow("sleeveLength", "လက်အရှည် (Sleeve Length)")}
