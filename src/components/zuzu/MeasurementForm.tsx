@@ -12,9 +12,10 @@ import {
   BODY_FIELDS,
   fitSlots,
   computeBalance,
-  emptyMeasurement,
+  emptyMeasurementToDay,
   formatAmount,
   codeMY,
+  type MeasurementData,
   type MeasurementDate,
   type TailorRecord,
 } from "@/lib/tailor";
@@ -44,32 +45,28 @@ export function MeasurementForm({
 }) {
   const [data, setData] = useState<MeasurementData>(() => {
     const base = emptyMeasurementToDay(new Date());
-    if (record?.record.data) return base;
+    if (!record || !record.data) return base;
     const d = record.data as MeasurementData;
     return {
       ...base,
       ...d,
       fields: { ...base.fields, ...(d.fields || {}) },
       backwait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
-      sleeveLength: [...(d.sleeveLength ?? [1, ..., ...base.sleeveLength].slice(0, 4)),
-      sleeveOpening: [...(d.sleeveOpening ?? [2, ..., ...base.sleeveOpening].slice(0, 4)),
+      sleeveLength: [...(d.sleeveLength ?? base.sleeveLength)].slice(0, 4),
+      sleeveOpening: [...(d.sleeveOpening ?? base.sleeveOpening)].slice(0, 4),
     };
   });
 
-  const setSlot = <K extends keyof MeasurementData>(key: K, value: MeasurementData[K]) => {
-    setData((d) => ({ ...d, [key]: value }));
+  const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", index: number, value: string) => {
+    setData((d) => {
+      const next = [...d[key]];
+      next[index] = value;
+      return { ...d, [key]: next };
+    });
   };
 
   const setField = (key: string, value: string) => {
     setData((d) => ({ ...d, fields: { ...d.fields, [key]: value } }));
-  };
-
-  const setslot = (backwait: string, sleeveLength: string, sleeveOpening: string, l: number, v: string) => {
-    setData((d) => {
-      const next = [...d[backwait]];
-      next[l] = v;
-      return { ...d, [key]: next };
-    });
   };
 
   const balance = computeBalance(data.total, data.deposit);
@@ -90,8 +87,8 @@ export function MeasurementForm({
   const slotRow = (key: "backwait" | "sleeveLength" | "sleeveOpening", label: string) => (
     <div className="space-y-1.5">
       <label className="text-xs text-muted-foreground">{label}</label>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.max(0, 4)}, minmax(0, 1fr))` }}>
-        {data[key].map((v, i) => (
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.max(0, data[key]?.length || 4)}, minmax(0, 1fr))` }}>
+        {(data[key] || []).map((v, i) => (
           <Input
             key={i}
             aria-label={`${label} ${i + 1}`}
@@ -125,7 +122,7 @@ export function MeasurementForm({
             <label htmlFor="m-phone">ဖုန်းနံပါတ်</label>
             <Input id="m-phone" type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} className={fieldInput} />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
               <label htmlFor="m-date">တိုင်းသည့်ရက်စွဲ</label>
               <DateField id="m-date" value={data.date} onChange={(v) => setData({ ...data, date: v })} />
@@ -149,15 +146,21 @@ export function MeasurementForm({
             if (f.key === "elbow") {
               return (
                 <div key={f.key} className="col-span-2 space-y-1.5 sm:col-span-3">
-                  <label htmlFor="f-elbow" className="text-xs text-muted-foreground">{f.my} <span className="text-xs text-muted-foreground">({f.en})</span></label>
+                  <label htmlFor="f-elbow" className="text-xs text-muted-foreground">
+                    {f.my} <span className="text-xs text-muted-foreground">({f.en})</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <Input
                       id="f-elbow"
                       value={data.fields["elbow"] ?? ""}
                       onChange={(e) => setField("elbow", e.target.value)}
-                      aria-label="တံတောင် + Note"
+                      placeholder="တံတောင် တိုင်းချက်"
+                      className={fieldInput}
+                    />
+                    <Input
+                      aria-label="တံတောင် Note"
                       placeholder="-/- Note"
-                      value={data.elbowNote}
+                      value={data.elbowNote || ""}
                       onChange={(e) => setData({ ...data, elbowNote: e.target.value })}
                       className="h-11 border-dashed border-gold/50 bg-champagne/30 text-base"
                     />
