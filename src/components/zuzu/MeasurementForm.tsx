@@ -14,20 +14,20 @@ import {
   computeBalance,
   emptyMeasurement,
   formatAmount,
-  toDMY,
-  type MeasurementData,
+  codeMY,
+  type MeasurementDate,
   type TailorRecord,
 } from "@/lib/tailor";
-import DateField from "./DateField";
-import SignaturePad from "./SignaturePad";
+import { DateField } from "./DateField";
+import { SignaturePad } from "./SignaturePad";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-      <h3 className="flex items-center gap-2 font-display text-base font-bold text-primary">
+    <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+      <div className="flex items-center gap-2 font-display text-base font-bold text-primary">
         <span className="h-4 w-1 rounded-full bg-gold" />
         {title}
-      </h3>
+      </div>
       {children}
     </section>
   );
@@ -43,29 +43,31 @@ export function MeasurementForm({
   onDone: (saved: TailorRecord | null) => void;
 }) {
   const [data, setData] = useState<MeasurementData>(() => {
-    const base = emptyMeasurement(toDMY(new Date()));
-    if (!record || !record.data) return base;
+    const base = emptyMeasurementToDay(new Date());
+    if (record?.record.data) return base;
     const d = record.data as MeasurementData;
     return {
       ...base,
       ...d,
-      fields: { ...(base.fields || {}), ...(d.fields || {}) },
+      fields: { ...base.fields, ...(d.fields || {}) },
       backwait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
-      sleeveLength: [...(d.sleeveLength ?? []), ...base.sleeveLength].slice(0, 4),
-      sleeveOpening: [...(d.sleeveOpening ?? []), ...base.sleeveOpening].slice(0, 4),
+      sleeveLength: [...(d.sleeveLength ?? [1, ..., ...base.sleeveLength].slice(0, 4)),
+      sleeveOpening: [...(d.sleeveOpening ?? [2, ..., ...base.sleeveOpening].slice(0, 4)),
     };
   });
 
-  const set = <K extends keyof MeasurementData>(key: K, value: MeasurementData[K]) => {
+  const setSlot = <K extends keyof MeasurementData>(key: K, value: MeasurementData[K]) => {
     setData((d) => ({ ...d, [key]: value }));
   };
+
   const setField = (key: string, value: string) => {
     setData((d) => ({ ...d, fields: { ...d.fields, [key]: value } }));
   };
-  const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", i: number, v: string) => {
+
+  const setslot = (backwait: string, sleeveLength: string, sleeveOpening: string, l: number, v: string) => {
     setData((d) => {
-      const next = [...d[key]];
-      next[i] = v;
+      const next = [...d[backwait]];
+      next[l] = v;
       return { ...d, [key]: next };
     });
   };
@@ -74,7 +76,7 @@ export function MeasurementForm({
 
   const save = () => {
     if (!data.name.trim()) {
-      toast.error("Customer အမည် ထည့်ပါ");
+      toast.error("Customer နာမည် ထည့်ပါ");
       return;
     }
     const next: TailorRecord = record
@@ -87,8 +89,8 @@ export function MeasurementForm({
 
   const slotRow = (key: "backwait" | "sleeveLength" | "sleeveOpening", label: string) => (
     <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${data[key].length || 4}, minmax(0, 1fr))` }}>
+      <label className="text-xs text-muted-foreground">{label}</label>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.max(0, 4)}, minmax(0, 1fr))` }}>
         {data[key].map((v, i) => (
           <Input
             key={i}
@@ -109,62 +111,65 @@ export function MeasurementForm({
           <ArrowLeft className="size-5" />
         </Button>
         <h2 className="font-display text-xl font-bold text-primary">
-          {record ? "တိုင်းတာမှု ပြင်ရန်" : "တိုင်းတာမှု အသစ်"}
+          {record ? "တိုင်းတာချက် ပြင်ဆင်ရန်" : "တိုင်းတာချက် အသစ်"}
         </h2>
       </div>
 
       <Section title="Customer အချက်အလက်">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="m-name">Customer အမည်</Label>
-            <Input id="m-name" value={data.name} onChange={(e) => set("name", e.target.value)} className={fieldInput} />
+            <label htmlFor="m-name">Customer နာမည်</label>
+            <Input id="m-name" value={data.name} onChange={(e) => setData({ ...data, name: e.target.value })} className={fieldInput} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="m-phone">ဖုန်းနံပါတ်</Label>
-            <Input id="m-phone" type="tel" inputMode="tel" value={data.phone} onChange={(e) => set("phone", e.target.value)} className={fieldInput} />
+            <label htmlFor="m-phone">ဖုန်းနံပါတ်</label>
+            <Input id="m-phone" type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} className={fieldInput} />
           </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="m-date">ရက်စွဲ</Label>
-            <DateField id="m-date" value={data.date} onChange={(v) => set("date", v)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="m-due">ချိန်ရက်</Label>
-            <DateField id="m-due" value={data.dueDate} onChange={(v) => set("dueDate", v)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="m-event">ပွဲနေ့</Label>
-            <DateField id="m-event" value={data.eventDate} onChange={(v) => set("eventDate", v)} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
+            <div className="space-y-1.5">
+              <label htmlFor="m-date">တိုင်းသည့်ရက်စွဲ</label>
+              <DateField id="m-date" value={data.date} onChange={(v) => setData({ ...data, date: v })} />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="m-due">Fitting ရက်စွဲ</label>
+              <DateField id="m-due" value={data.dueDate} onChange={(v) => setData({ ...data, dueDate: v })} />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="m-event">ပွဲရက်စွဲ</label>
+              <DateField id="m-event" value={data.eventDate} onChange={(v) => setData({ ...data, eventDate: v })} />
+            </div>
           </div>
         </div>
       </Section>
 
-      <Section title="ကိုယ်တိုင်း (Body Measurements)">
-        <p className="text-xs text-muted-foreground">36 - 38, 34 / 36, 32 * 2, % စသည်ဖြင့် ရေးနိုင်သည်</p>
+      <Section title="ကိုယ်ထည် (Body Measurements)">
+        <p className="text-xs text-muted-foreground">36, 38, 34 / 36, 32 ^ 2, % စသည်ဖြင့် ထည့်နိုင်သည်</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
-          {BODY_FIELDS.map((f) => (
-            f.key === "elbow" ? (
-              <div key={f.key} className="col-span-2 space-y-1.5 sm:col-span-3">
-                <Label htmlFor="f-elbow">
-                  {f.my} <span className="text-xs text-muted-foreground">({f.en})</span>
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input id="f-elbow" value={data.fields["elbow"] ?? ""} onChange={(e) => setField("elbow", e.target.value)} className={fieldInput} />
-                  <Input
-                    aria-label="တံတောင် +/- Note"
-                    placeholder="+/- Note"
-                    value={data.elbowNote}
-                    onChange={(e) => set("elbowNote", e.target.value)}
-                    className="h-11 border-dashed border-gold/60 bg-champagne/30 text-base"
-                  />
+          {BODY_FIELDS.map((f) => {
+            if (f.key === "elbow") {
+              return (
+                <div key={f.key} className="col-span-2 space-y-1.5 sm:col-span-3">
+                  <label htmlFor="f-elbow" className="text-xs text-muted-foreground">{f.my} <span className="text-xs text-muted-foreground">({f.en})</span></label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      id="f-elbow"
+                      value={data.fields["elbow"] ?? ""}
+                      onChange={(e) => setField("elbow", e.target.value)}
+                      aria-label="တံတောင် + Note"
+                      placeholder="-/- Note"
+                      value={data.elbowNote}
+                      onChange={(e) => setData({ ...data, elbowNote: e.target.value })}
+                      className="h-11 border-dashed border-gold/50 bg-champagne/30 text-base"
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : (
+              );
+            }
+            return (
               <div key={f.key} className="space-y-1.5">
-                <Label htmlFor={`f-${f.key}`} className="block truncate">
+                <label htmlFor={`f-${f.key}`} className="block truncate">
                   {f.my} <span className="text-xs text-muted-foreground">({f.en})</span>
-                </Label>
+                </label>
                 <Input
                   id={`f-${f.key}`}
                   value={data.fields[f.key] ?? ""}
@@ -172,56 +177,56 @@ export function MeasurementForm({
                   className={fieldInput}
                 />
               </div>
-            )
-          ))}
+            );
+          })}
         </div>
       </Section>
 
-      <Section title="အထူး / အဝ (Multi-slot)">
-        {slotRow("backwait", "နောက်ကျောရှည် (Back Waist Length)")}
-        {slotRow("sleeveLength", "လက်ရှည် (Sleeve Length)")}
-        {slotRow("sleeveOpening", "လက်ပတ် (Sleeve Opening / Wrist)")}
+      <Section title="လက် / ကာ (Multi-slot)">
+        {slotRow("backwait", "ကျောကုန်းအရှည် (Back Waist Length)")}
+        {slotRow("sleeveLength", "လက်အရှည် (Sleeve Length)")}
+        {slotRow("sleeveOpening", "လက်ပတ်ဝိုင်း (Sleeve Opening / Wrist)")}
       </Section>
 
-      <Section title="မှတ်ချက်">
-        <Textarea value={data.notes} onChange={(e) => set("notes", e.target.value)} />
+      <Section title="မှတ်ချက်များ">
+        <Textarea value={data.notes} onChange={(e) => setData({ ...data, notes: e.target.value })} />
       </Section>
 
       <Section title="ငွေစာရင်း">
         <div className="space-y-1.5">
-          <Label htmlFor="m-total">စုစုပေါင်း ကျသင့်ငွေ (Total Price)</Label>
-          <Input id="m-total" inputMode="decimal" value={data.total} onChange={(e) => set("total", e.target.value)} className={fieldInput} />
+          <label htmlFor="m-total">စုစုပေါင်း ကျသင့်ငွေ (Total Price)</label>
+          <Input id="m-total" inputMode="decimal" value={data.total} onChange={(e) => setData({ ...data, total: e.target.value })} className={fieldInput} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="m-deposit">စရံငွေ / ပေးပြီးငွေ (Deposit / Paid)</Label>
-          <Input id="m-deposit" inputMode="decimal" value={data.deposit} onChange={(e) => set("deposit", e.target.value)} className={fieldInput} />
+          <label htmlFor="m-deposit">စပေါ်ငွေ / ပေးပြီးငွေ (Deposit / Paid)</label>
+          <Input id="m-deposit" inputMode="decimal" value={data.deposit} onChange={(e) => setData({ ...data, deposit: e.target.value })} className={fieldInput} />
         </div>
         <div className="flex items-center justify-between rounded-xl bg-burgundy/10 p-3">
-          <span className="text-sm">လက်ကျန်ငွေ (Balance)</span>
+          <span className="text-sm">ကျန်ငွေ (Balance)</span>
           <span className="font-display text-xl font-bold">{formatAmount(balance)}</span>
         </div>
       </Section>
 
-      <Section title="လက်မှတ်များ">
+      <Section title="လက်မှတ်ထိုးရန်">
         <div className="grid gap-4 sm:grid-cols-2">
           <SignaturePad
             label="Designer လက်မှတ်"
             value={data.designerSig}
-            onChange={(v) => set("designerSig", v)}
+            onChange={(v) => setData({ ...data, designerSig: v })}
             mode={data.designerSigMode ?? "draw"}
-            onModeChange={(m) => set("designerSigMode", m)}
+            onModeChange={(m) => setData({ ...data, designerSigMode: m })}
             text={data.designerSigText ?? ""}
-            onTextChange={(t) => set("designerSigText", t)}
+            onTextChange={(t) => setData({ ...data, designerSigText: t })}
             placeholder="Designer Zu Zu"
           />
           <SignaturePad
             label="Customer လက်မှတ်"
             value={data.customerSig}
-            onChange={(v) => set("customerSig", v)}
+            onChange={(v) => setData({ ...data, customerSig: v })}
             mode={data.customerSigMode ?? "draw"}
-            onModeChange={(m) => set("customerSigMode", m)}
+            onModeChange={(m) => setData({ ...data, customerSigMode: m })}
             text={data.customerSigText ?? ""}
-            onTextChange={(t) => set("customerSigText", t)}
+            onTextChange={(t) => setData({ ...data, customerSigText: t })}
             placeholder="ဖောက်သည်"
           />
         </div>
@@ -233,7 +238,7 @@ export function MeasurementForm({
             မလုပ်တော့ပါ
           </Button>
           <Button variant="burgundy" size="xl" className="flex-2" onClick={save}>
-            <Save /> သိမ်းမည်
+            <Save className="size-5" /> သိမ်းမည်
           </Button>
         </div>
       </div>
