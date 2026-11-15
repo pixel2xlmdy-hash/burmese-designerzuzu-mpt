@@ -12,18 +12,18 @@ import {
   BODY_FIELDS,
   fitSlots,
   computeBalance,
-  emptyMeasurementToDay,
+  emptyMeasurement,
   formatAmount,
   toDMY,
   type MeasurementData,
   type TailorRecord,
 } from "@/lib/tailor";
-import DateField from "./DateField";
-import SignaturePad from "./SignaturePad";
+import { DateField } from "./DateField";
+import { SignaturePad } from "./SignaturePad";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+    <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
       <h3 className="flex items-center gap-2 font-display text-base font-bold text-primary">
         <span className="h-4 w-1 rounded-full bg-gold" />
         {title}
@@ -34,6 +34,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const fieldInput = "h-11 bg-background/60 text-base";
+const MY_NUMS = ["၁", "၂", "၃", "၄", "၅", "၆"];
 
 export function MeasurementForm({
   record,
@@ -43,38 +44,29 @@ export function MeasurementForm({
   onDone: (saved: TailorRecord | null) => void;
 }) {
   const [data, setData] = useState<MeasurementData>(() => {
-    const base = emptyMeasurementToDay();
-    if (!record || !record.data) return base;
+    const base = emptyMeasurement(toDMY(new Date()));
+    if (!record) return base;
     const d = record.data as MeasurementData;
     return {
       ...base,
       ...d,
-      fields: { ...(base.fields || {}), ...(d.fields || {}) },
-      backwait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
+      fields: { ...d.fields },
+      backWaist: fitSlots(d.backWaist, BACK_WAIST_SLOTS),
       sleeveLength: [...(d.sleeveLength ?? []), ...base.sleeveLength].slice(0, 4),
       sleeveOpening: [...(d.sleeveOpening ?? []), ...base.sleeveOpening].slice(0, 4),
     };
   });
 
-  const [elbowNote, setElbowNote] = useState((record?.data as any)?.elbowNote ?? "");
-  const [designerSigMode, setDesignerSigMode] = useState<"draw" | "text">((record?.data as any)?.designerSigMode ?? "draw");
-  const [designerSigText, setDesignerSigText] = useState((record?.data as any)?.designerSigText ?? "");
-  const [customerSigMode, setCustomerSigMode] = useState<"draw" | "text">((record?.data as any)?.customerSigMode ?? "draw");
-  const [customerSigText, setCustomerSigText] = useState((record?.data as any)?.customerSigText ?? "");
-
-  const set = <K extends keyof MeasurementData>(key: K, value: MeasurementData[K]) => {
+  const set = <K extends keyof MeasurementData>(key: K, value: MeasurementData[K]) =>
     setData((d) => ({ ...d, [key]: value }));
-  };
-  const setField = (key: string, value: string) => {
+  const setField = (key: string, value: string) =>
     setData((d) => ({ ...d, fields: { ...d.fields, [key]: value } }));
-  };
-  const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", i: number, v: string) => {
+  const setSlot = (key: "backWaist" | "sleeveLength" | "sleeveOpening", i: number, v: string) =>
     setData((d) => {
       const next = [...d[key]];
       next[i] = v;
       return { ...d, [key]: next };
     });
-  };
 
   const balance = computeBalance(data.total, data.deposit);
 
@@ -83,26 +75,18 @@ export function MeasurementForm({
       toast.error("Customer အမည် ထည့်ပါ");
       return;
     }
-    const payload = {
-      ...data,
-      elbowNote,
-      designerSigMode,
-      designerSigText,
-      customerSigMode,
-      customerSigText,
-    };
     const next: TailorRecord = record
-      ? { ...record, data: payload }
-      : createRecord("measurement", payload);
+      ? { ...record, data }
+      : createRecord("measurement", data);
     saveRecord(next);
     toast.success("သိမ်းဆည်းပြီးပါပြီ");
     onDone(next);
   };
 
-  const slotRow = (key: "backwait" | "sleeveLength" | "sleeveOpening", label: string) => (
+  const slotRow = (key: "backWaist" | "sleeveLength" | "sleeveOpening", label: string) => (
     <div className="space-y-1.5">
       <Label className="text-sm">{label}</Label>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${data[key].length || 4}, minmax(0, 1fr))` }}>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${data[key].length}, minmax(0,1fr))` }}>
         {data[key].map((v, i) => (
           <Input
             key={i}
@@ -120,10 +104,10 @@ export function MeasurementForm({
     <div className="mx-auto max-w-3xl space-y-4 px-4 pb-28 pt-3">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => onDone(null)} aria-label="Back">
-          <ArrowLeft className="size-5" />
+          <ArrowLeft className="!size-5" />
         </Button>
         <h2 className="font-display text-xl font-bold text-primary">
-          {record ? "တိုင်းတာမှု ပြင်ဆင်ရန်" : "တိုင်းတာမှု အသစ်"}
+          {record ? "တိုင်းတာမှု ပြင်ရန်" : "တိုင်းတာမှု အသစ်"}
         </h2>
       </div>
 
@@ -144,7 +128,7 @@ export function MeasurementForm({
             <DateField id="m-date" value={data.date} onChange={(v) => set("date", v)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="m-due">ချိန်ရက်</Label>
+            <Label htmlFor="m-due">ချိန်းရက်</Label>
             <DateField id="m-due" value={data.dueDate} onChange={(v) => set("dueDate", v)} />
           </div>
           <div className="space-y-1.5">
@@ -155,9 +139,9 @@ export function MeasurementForm({
       </Section>
 
       <Section title="ကိုယ်တိုင်း (Body Measurements)">
-        <p className="text-xs text-muted-foreground">36 - 38, 34 / 36, 32 * 2, % စသည်ဖြင့် ရေးနိုင်သည်</p>
+        <p className="text-xs text-muted-foreground">36 - 38, 34 / 36, 32 * 2, ½ စသဖြင့် ရေးနိုင်ပါသည်</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
-          {BODY_FIELDS.map((f) => (
+          {BODY_FIELDS.map((f) =>
             f.key === "elbow" ? (
               <div key={f.key} className="col-span-2 space-y-1.5 sm:col-span-3">
                 <Label htmlFor="f-elbow">
@@ -166,10 +150,10 @@ export function MeasurementForm({
                 <div className="grid grid-cols-2 gap-2">
                   <Input id="f-elbow" value={data.fields["elbow"] ?? ""} onChange={(e) => setField("elbow", e.target.value)} className={fieldInput} />
                   <Input
-                    aria-label="တံတောင် +/- Note"
+                    aria-label="လက်အိုး +/- Note"
                     placeholder="+/- Note"
-                    value={elbowNote}
-                    onChange={(e) => setElbowNote(e.target.value)}
+                    value={data.elbowNote}
+                    onChange={(e) => set("elbowNote", e.target.value)}
                     className="h-11 border-dashed border-gold/60 bg-champagne/30 text-base"
                   />
                 </div>
@@ -179,40 +163,57 @@ export function MeasurementForm({
                 <Label htmlFor={`f-${f.key}`} className="block truncate">
                   {f.my} <span className="text-xs text-muted-foreground">({f.en})</span>
                 </Label>
-                <Input
-                  id={`f-${f.key}`}
-                  value={data.fields[f.key] ?? ""}
-                  onChange={(e) => setField(f.key, e.target.value)}
-                  className={fieldInput}
-                />
+                <Input id={`f-${f.key}`} value={data.fields[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} className={fieldInput} />
               </div>
-            )
-          ))}
+            ),
+          )}
         </div>
       </Section>
 
-      <Section title="အထူး / အဝ (Multi-slot)">
-        {slotRow("backwait", "နောက်ကျောရှည် (Back Waist Length)")}
+      <Section title="အရှည် / အဝ (Multi-slot)">
+        <div className="space-y-1.5">
+          <Label className="text-sm">
+            နောက်ခါးရှည် (Back Waist Length){" "}
+            <span className="text-xs text-muted-foreground">— အကွက် ၁ မှ အကွက် ၆ ထိ (လက်မ)</span>
+          </Label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {data.backWaist.map((v, i) => (
+              <label key={i} className="space-y-0.5">
+                <span className="block text-center text-[11px] text-muted-foreground">အကွက် {MY_NUMS[i]}</span>
+                <Input
+                  aria-label={`နောက်ခါးရှည် အကွက် ${i + 1}`}
+                  inputMode="decimal"
+                  placeholder="0.0"
+                  value={v}
+                  onChange={(e) => setSlot("backWaist", i, e.target.value)}
+                  className="h-11 bg-background/60 px-1.5 text-center text-base"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
         {slotRow("sleeveLength", "လက်ရှည် (Sleeve Length)")}
-        {slotRow("sleeveOpening", "လက်ပတ် (Sleeve Opening / Wrist)")}
+        {slotRow("sleeveOpening", "လက်ဝ (Sleeve Opening / Wrist)")}
       </Section>
 
       <Section title="မှတ်ချက်">
-        <Textarea value={data.notes} onChange={(e) => set("notes", e.target.value)} />
+        <Textarea value={data.notes} onChange={(e) => set("notes", e.target.value)} rows={3} className="bg-background/60 text-base" placeholder="ဒီဇိုင်း၊ အထည်၊ အရောင် စသည်..." />
       </Section>
 
       <Section title="ငွေစာရင်း">
-        <div className="space-y-1.5">
-          <Label htmlFor="m-total">စုစုပေါင်း ကျသင့်ငွေ (Total Price)</Label>
-          <Input id="m-total" inputMode="decimal" value={data.total} onChange={(e) => set("total", e.target.value)} className={fieldInput} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="m-deposit">စရံငွေ / ပေးပြီးငွေ (Deposit / Paid)</Label>
-          <Input id="m-deposit" inputMode="decimal" value={data.deposit} onChange={(e) => set("deposit", e.target.value)} className={fieldInput} />
-        </div>
-        <div className="flex items-center justify-between rounded-xl bg-burgundy/10 p-3">
-          <span className="text-sm">လက်ကျန်ငွေ (Balance)</span>
-          <span className="font-display text-xl font-bold">{formatAmount(balance)}</span>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="m-total">1) စုစုပေါင်း ကျသင့်ငွေ (Total Price)</Label>
+            <Input id="m-total" inputMode="decimal" value={data.total} onChange={(e) => set("total", e.target.value)} className={fieldInput} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="m-deposit">2) စရံငွေ / အကြေပေးချေ (Deposit / Paid)</Label>
+            <Input id="m-deposit" inputMode="decimal" value={data.deposit} onChange={(e) => set("deposit", e.target.value)} className={fieldInput} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl bg-burgundy-gradient px-4 py-3 text-primary-foreground">
+            <span className="text-sm">3) လက်ကျန်ငွေ (Balance)</span>
+            <span className="font-display text-xl font-bold">{formatAmount(balance)} ကျပ်</span>
+          </div>
         </div>
       </Section>
 
@@ -222,31 +223,31 @@ export function MeasurementForm({
             label="Designer လက်မှတ်"
             value={data.designerSig}
             onChange={(v) => set("designerSig", v)}
-            mode={designerSigMode}
-            onModeChange={setDesignerSigMode}
-            text={designerSigText}
-            onTextChange={setDesignerSigText}
+            mode={data.designerSigMode ?? "draw"}
+            onModeChange={(m) => set("designerSigMode", m)}
+            text={data.designerSigText ?? ""}
+            onTextChange={(t) => set("designerSigText", t)}
             placeholder="Designer Zu Zu"
           />
           <SignaturePad
             label="Customer လက်မှတ်"
             value={data.customerSig}
             onChange={(v) => set("customerSig", v)}
-            mode={customerSigMode}
-            onModeChange={setCustomerSigMode}
-            text={customerSigText}
-            onTextChange={setCustomerSigText}
-            placeholder="ဖောက်သည်"
+            mode={data.customerSigMode ?? "draw"}
+            onModeChange={(m) => set("customerSigMode", m)}
+            text={data.customerSigText ?? ""}
+            onTextChange={(t) => set("customerSigText", t)}
+            placeholder="ဒေါ်မိုးမိုး"
           />
         </div>
       </Section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl gap-2 px-4 py-3">
           <Button variant="soft" size="xl" className="flex-1" onClick={() => onDone(null)}>
             မလုပ်တော့ပါ
           </Button>
-          <Button variant="burgundy" size="xl" className="flex-2" onClick={save}>
+          <Button variant="burgundy" size="xl" className="flex-[2]" onClick={save}>
             <Save /> သိမ်းမည်
           </Button>
         </div>
