@@ -59,7 +59,8 @@ export function MeasurementForm({
 
   const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", index: number, value: string) => {
     setData((d) => {
-      const next = [...d[key]];
+      const targetArr = d[key] || ["", "", "", ""];
+      const next = [...targetArr];
       next[index] = value;
       return { ...d, [key]: next };
     });
@@ -87,12 +88,12 @@ export function MeasurementForm({
   const slotRow = (key: "backwait" | "sleeveLength" | "sleeveOpening", label: string) => (
     <div className="space-y-1.5">
       <label className="text-xs text-muted-foreground">{label}</label>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.max(0, data[key]?.length || 4)}, minmax(0, 1fr))` }}>
-        {(data[key] || []).map((v, i) => (
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(4, minmax(0, 1fr))` }}>
+        {(data[key] || ["", "", "", ""]).map((v, i) => (
           <Input
             key={i}
             aria-label={`${label} ${i + 1}`}
-            value={v}
+            value={v || ""}
             onChange={(e) => setSlot(key, i, e.target.value)}
             className="h-11 bg-background/60 px-1.5 text-center text-base"
           />
@@ -100,7 +101,6 @@ export function MeasurementForm({
       </div>
     </div>
   );
-
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 pb-28 pt-3">
       <div className="flex items-center gap-2">
@@ -116,11 +116,11 @@ export function MeasurementForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor="m-name">Customer နာမည်</label>
-            <Input id="m-name" value={data.name} onChange={(e) => setData({ ...data, name: e.target.value })} className={fieldInput} />
+            <Input id="m-name" value={data.name || ""} onChange={(e) => setData({ ...data, name: e.target.value })} className={fieldInput} />
           </div>
           <div className="space-y-1.5">
             <label htmlFor="m-phone">ဖုန်းနံပါတ်</label>
-            <Input id="m-phone" type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} className={fieldInput} />
+            <Input id="m-phone" type="tel" inputMode="tel" value={data.phone || ""} onChange={(e) => setData({ ...data, phone: e.target.value })} className={fieldInput} />
           </div>
           <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
@@ -152,7 +152,7 @@ export function MeasurementForm({
                   <div className="grid grid-cols-2 gap-2">
                     <Input
                       id="f-elbow"
-                      value={data.fields["elbow"] ?? ""}
+                      value={data.fields?.["elbow"] ?? ""}
                       onChange={(e) => setField("elbow", e.target.value)}
                       placeholder="တံတောင် တိုင်းချက်"
                       className={fieldInput}
@@ -175,7 +175,7 @@ export function MeasurementForm({
                 </label>
                 <Input
                   id={`f-${f.key}`}
-                  value={data.fields[f.key] ?? ""}
+                  value={data.fields?.[f.key] ?? ""}
                   onChange={(e) => setField(f.key, e.target.value)}
                   className={fieldInput}
                 />
@@ -192,17 +192,17 @@ export function MeasurementForm({
       </Section>
 
       <Section title="မှတ်ချက်များ">
-        <Textarea value={data.notes} onChange={(e) => setData({ ...data, notes: e.target.value })} />
+        <Textarea value={data.notes || ""} onChange={(e) => setData({ ...data, notes: e.target.value })} />
       </Section>
 
       <Section title="ငွေစာရင်း">
         <div className="space-y-1.5">
           <label htmlFor="m-total">စုစုပေါင်း ကျသင့်ငွေ (Total Price)</label>
-          <Input id="m-total" inputMode="decimal" value={data.total} onChange={(e) => setData({ ...data, total: e.target.value })} className={fieldInput} />
+          <Input id="m-total" inputMode="decimal" value={data.total || ""} onChange={(e) => setData({ ...data, total: e.target.value })} className={fieldInput} />
         </div>
         <div className="space-y-1.5">
           <label htmlFor="m-deposit">စပေါ်ငွေ / ပေးပြီးငွေ (Deposit / Paid)</label>
-          <Input id="m-deposit" inputMode="decimal" value={data.deposit} onChange={(e) => setData({ ...data, deposit: e.target.value })} className={fieldInput} />
+          <Input id="m-deposit" inputMode="decimal" value={data.deposit || ""} onChange={(e) => setData({ ...data, deposit: e.target.value })} className={fieldInput} />
         </div>
         <div className="flex items-center justify-between rounded-xl bg-burgundy/10 p-3">
           <span className="text-sm">ကျန်ငွေ (Balance)</span>
