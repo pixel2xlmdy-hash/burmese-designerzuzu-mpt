@@ -785,6 +785,8 @@ export function SettingsSheet({
       />
     </div>
   {/* Fitting & Delivery Date Reminder Settings */}
+
+{/* Fitting & Delivery Date Reminder Settings */}
 <section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
   <h3 className="font-display text-base font-bold text-primary">📅 ရက်ချိန်းနှင့် အာရွန်သတိပေးစနစ် (Reminder & Alarm)</h3>
   <div className="space-y-3 text-sm">
@@ -814,8 +816,10 @@ export function SettingsSheet({
           if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-              localStorage.setItem('mpt_custom_alarm_sound', reader.result as string);
-              alert("✅ အသံဖိုင် သိမ်းဆည်းပြီးပါပြီ!");
+              if (reader.result) {
+                localStorage.setItem('mpt_custom_alarm_sound', String(reader.result));
+                alert("✅ အသံဖိုင် သိမ်းဆည်းပြီးပါပြီ!");
+              }
             };
             reader.readAsDataURL(file);
           }
