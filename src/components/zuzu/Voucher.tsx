@@ -44,10 +44,8 @@ function Slots({ label, values, numbered }: { label: string; values: string[]; n
     </div>
   );
 }
-
-export const DEFAULT_VOUCHER_CONTACT = `📞 ${PHONE_1}\n📞 ${PHONE_2}`;
-export const DEFAULT_VOUCHER_FOOTER = "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။";
-
+export const DEFAULT_VOUCHER_CONTACT = "📞 ဖုန်း: 09-XXXXXXXXX | 📍 မန္တလေးမြို့";
+export const DEFAULT_VOUCHER_FOOTER = "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။\n✨ မိမိတို့၏ အထည်အဆင်များကို ယုံကြည်စိတ်ချစွာ အပ်နှံနိုင်ပါသည်ရှင် 🙏 ကျေးဇူးတင်ပါသည်";
 const isBurmese = (t: string) => /[\u1000-\u109F]/.test(t);
 
 function VoucherLogo({ src }: { src: string }) {
