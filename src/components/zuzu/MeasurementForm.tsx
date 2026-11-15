@@ -34,7 +34,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const fieldInput = "h-11 bg-background/60 text-base";
-const MY_NUMS = ["ဝ", "၁", "၂", "၃", "၄", "၅", "၆", "၇", "၈", "၉"];
 
 export function MeasurementForm({
   record,
