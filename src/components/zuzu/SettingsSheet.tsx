@@ -785,7 +785,49 @@ export function SettingsSheet({
       />
     </div>
   </div>
-</section>
+    {/* Fitting & Delivery Date Reminder Settings */}
+  <section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+    <h3 className="font-display text-base font-bold text-primary">📅 ရက်ချိန်းနှင့် အာရွန်သတိပေးစနစ် (Reminder & Alarm)</h3>
+    <div className="space-y-3 text-sm">
+      
+      {/* Alarm On/Off Toggle */}
+      <div className="flex items-center justify-between p-2 bg-background rounded-lg border">
+        <span className="font-semibold text-xs text-foreground">🔔 ရက်ချိန်းသတိပေး အာရွန် (Alarm Status)</span>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            defaultChecked={localStorage.getItem('mpt_alarm_enabled') === 'true'}
+            onChange={(e) => localStorage.setItem('mpt_alarm_enabled', e.target.checked ? 'true' : 'false')}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        </label>
+      </div>
+
+      {/* Custom Alarm Sound Upload */}
+      <div>
+        <label className="block text-xs font-semibold text-muted-foreground mb-1">🎵 Alarm အသံဖိုင် ရွေးချယ်ရန် (Default သို့မဟုတ် ဖုန်းထဲမှ အသံ)</label>
+        <input 
+          type="file" 
+          accept="audio/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                localStorage.setItem('mpt_custom_alarm_sound', reader.result as string);
+                alert("✅ အသံဖိုင် သိမ်းဆည်းပြီးပါပြီ!");
+              };
+              reader.readAsDataURL(file);
+            }
+          }}
+          className="w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+        />
+        <p className="text-[10px] text-muted-foreground mt-1">ဖိုင်မရွေးချယ်ပါက System ၏ Default အသံကို အသုံးပြုပါမည်။</p>
+      </div>
+
+    </div>
+  </section>
                     
                     <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
                     <Input
