@@ -14,7 +14,7 @@ import {
   computeBalance,
   emptyMeasurementToDay,
   formatAmount,
-  codeMY,
+  toDMY,
   type MeasurementData,
   type TailorRecord,
 } from "@/lib/tailor";
