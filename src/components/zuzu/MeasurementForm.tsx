@@ -21,15 +21,6 @@ import {
 import { DateField } from "./DateField";
 import { SignaturePad } from "./SignaturePad";
 
-// Extended interface for local form state safety
-interface ExtendedMeasurementData extends MeasurementData {
-  elbowNote?: string;
-  designerSigMode?: "draw" | "text";
-  designerSigText?: string;
-  customerSigMode?: "draw" | "text";
-  customerSigText?: string;
-}
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
@@ -51,10 +42,10 @@ export function MeasurementForm({
   record: TailorRecord | null;
   onDone: (saved: TailorRecord | null) => void;
 }) {
-  const [data, setData] = useState<ExtendedMeasurementData>(() => {
-    const base = emptyMeasurementToDay(new Date()) as ExtendedMeasurementData;
+  const [data, setData] = useState<MeasurementData>(() => {
+    const base = emptyMeasurementToDay(new Date());
     if (!record || !record.data) return base;
-    const d = record.data as ExtendedMeasurementData;
+    const d = record.data as Record<string, any>;
     return {
       ...base,
       ...d,
@@ -62,12 +53,18 @@ export function MeasurementForm({
       backwait: fitSlots(d.backwait || [], BACK_WAIST_SLOTS),
       sleeveLength: [...(d.sleeveLength ?? base.sleeveLength || ["", "", "", ""])].slice(0, 4),
       sleeveOpening: [...(d.sleeveOpening ?? base.sleeveOpening || ["", "", "", ""])].slice(0, 4),
-    };
+    } as MeasurementData;
   });
+
+  const [elbowNote, setElbowNote] = useState<string>((record?.data as any)?.elbowNote || "");
+  const [designerSigMode, setDesignerSigMode] = useState<"draw" | "text">((record?.data as any)?.designerSigMode || "draw");
+  const [designerSigText, setDesignerSigText] = useState<string>((record?.data as any)?.designerSigText || "");
+  const [customerSigMode, setCustomerSigMode] = useState<"draw" | "text">((record?.data as any)?.customerSigMode || "draw");
+  const [customerSigText, setCustomerSigText] = useState<string>((record?.data as any)?.customerSigText || "");
 
   const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", index: number, value: string) => {
     setData((d) => {
-      const targetArr = d[key] || ["", "", "", ""];
+      const targetArr = (d[key] as string[]) || ["", "", "", ""];
       const next = [...targetArr];
       next[index] = value;
       return { ...d, [key]: next };
@@ -85,9 +82,17 @@ export function MeasurementForm({
       toast.error("Customer နာမည် ထည့်ပါ");
       return;
     }
+    const payload = {
+      ...data,
+      elbowNote,
+      designerSigMode,
+      designerSigText,
+      customerSigMode,
+      customerSigText,
+    };
     const next: TailorRecord = record
-      ? { ...record, data: data as MeasurementData }
-      : createRecord("measurement", data as MeasurementData);
+      ? { ...record, data: payload }
+      : createRecord("measurement", payload);
     saveRecord(next);
     toast.success("သိမ်းဆည်းပြီးပါပြီ");
     onDone(next);
@@ -97,7 +102,7 @@ export function MeasurementForm({
     <div className="space-y-1.5">
       <label className="text-xs text-muted-foreground">{label}</label>
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(4, minmax(0, 1fr))` }}>
-        {(data[key] || ["", "", "", ""]).map((v, i) => (
+        {((data[key] as string[]) || ["", "", "", ""]).map((v, i) => (
           <Input
             key={i}
             aria-label={`${label} ${i + 1}`}
@@ -168,8 +173,8 @@ export function MeasurementForm({
                     <Input
                       aria-label="တံတောင် Note"
                       placeholder="-/- Note"
-                      value={data.elbowNote || ""}
-                      onChange={(e) => setData({ ...data, elbowNote: e.target.value })}
+                      value={elbowNote}
+                      onChange={(e) => setElbowNote(e.target.value)}
                       className="h-11 border-dashed border-gold/50 bg-champagne/30 text-base"
                     />
                   </div>
@@ -224,20 +229,20 @@ export function MeasurementForm({
             label="Designer လက်မှတ်"
             value={data.designerSig || ""}
             onChange={(v) => setData({ ...data, designerSig: v })}
-            mode={data.designerSigMode ?? "draw"}
-            onModeChange={(m) => setData({ ...data, designerSigMode: m })}
-            text={data.designerSigText ?? ""}
-            onTextChange={(t) => setData({ ...data, designerSigText: t })}
+            mode={designerSigMode}
+            onModeChange={setDesignerSigMode}
+            text={designerSigText}
+            onTextChange={setDesignerSigText}
             placeholder="Designer Zu Zu"
           />
           <SignaturePad
             label="Customer လက်မှတ်"
             value={data.customerSig || ""}
             onChange={(v) => setData({ ...data, customerSig: v })}
-            mode={data.customerSigMode ?? "draw"}
-            onModeChange={(m) => setData({ ...data, customerSigMode: m })}
-            text={data.customerSigText ?? ""}
-            onTextChange={(t) => setData({ ...data, customerSigText: t })}
+            mode={customerSigMode}
+            onModeChange={setCustomerSigMode}
+            text={customerSigText}
+            onTextChange={setCustomerSigText}
             placeholder="ဖောက်သည်"
           />
         </div>
