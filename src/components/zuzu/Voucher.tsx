@@ -230,8 +230,13 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
             );
           })}
         </div>
+{/* Dynamic Voucher Footer Section */}
+<div className="mt-6 pt-3 border-t border-amber-300 text-center text-xs text-gray-700">
+  <p className="font-bold text-amber-900">{shopName}</p>
+  <p className="mt-1">{shopPhone} | {shopAddress}</p>
+  <p className="mt-2 font-medium italic text-amber-800 whitespace-pre-line">{shopFooter}</p>
+</div>
 
-        <div className="mt-2.5 whitespace-pre-line text-center text-[10.5px] text-muted-foreground">{footer}</div>
       </div>
     </div>
   );
