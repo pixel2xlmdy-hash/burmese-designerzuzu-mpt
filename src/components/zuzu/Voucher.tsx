@@ -230,6 +230,30 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
             );
           })}
         </div>
+          {/* One-Click Share Buttons (Viber & Telegram) - Print ထုတ်လျှင် မပါပါ */}
+  <div className="flex gap-2 justify-center my-4 print:hidden">
+    <button 
+      type="button"
+      onClick={() => {
+        const shareText = `👗 ${shopName}\n-------------------\n👤 ဖောက်သည်: ${data.name || '-'}\n📞 ဖုန်း: ${data.phone || '-'}\n💰 ကျသင့်ငွေ: ${formatAmount(parseAmount(data.total))} ကျပ်\n-------------------\n${shopFooter}`;
+        window.open(`viber://forward?text=${encodeURIComponent(shareText)}`, '_blank');
+      }}
+      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow transition-all"
+    >
+      📤 Viber သို့ ပို့မည်
+    </button>
+    <button 
+      type="button"
+      onClick={() => {
+        const shareText = `👗 ${shopName}\n-------------------\n👤 ဖောက်သည်: ${data.name || '-'}\n📞 ဖုန်း: ${data.phone || '-'}\n💰 ကျသင့်ငွေ: ${formatAmount(parseAmount(data.total))} ကျပ်\n-------------------\n${shopFooter}`;
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`, '_blank');
+      }}
+      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow transition-all"
+    >
+      📤 Telegram သို့ ပို့မည်
+    </button>
+  </div>
+
 {/* Dynamic Voucher Footer Section */}
 <div className="mt-6 pt-3 border-t border-amber-300 text-center text-xs text-gray-700">
   <p className="font-bold text-amber-900">{shopName}</p>
