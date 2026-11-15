@@ -15,12 +15,20 @@ import {
   emptyMeasurementToDay,
   formatAmount,
   codeMY,
-  type MeasurementData,
-  type MeasurementDate,
+  type MeasurementData as BaseMeasurementData,
   type TailorRecord,
 } from "@/lib/tailor";
 import { DateField } from "./DateField";
 import { SignaturePad } from "./SignaturePad";
+
+// Extended interface to prevent missing property errors in TS
+interface ExtendedMeasurementData extends BaseMeasurementData {
+  elbowNote?: string;
+  designerSigMode?: "draw" | "text";
+  designerSigText?: string;
+  customerSigMode?: "draw" | "text";
+  customerSigText?: string;
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -43,17 +51,17 @@ export function MeasurementForm({
   record: TailorRecord | null;
   onDone: (saved: TailorRecord | null) => void;
 }) {
-  const [data, setData] = useState<MeasurementData>(() => {
-    const base = emptyMeasurementToDay(new Date());
+  const [data, setData] = useState<ExtendedMeasurementData>(() => {
+    const base = emptyMeasurementToDay(new Date()) as ExtendedMeasurementData;
     if (!record || !record.data) return base;
-    const d = record.data as MeasurementData;
+    const d = record.data as ExtendedMeasurementData;
     return {
       ...base,
       ...d,
       fields: { ...base.fields, ...(d.fields || {}) },
-      backwait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
-      sleeveLength: [...(d.sleeveLength ?? base.sleeveLength)].slice(0, 4),
-      sleeveOpening: [...(d.sleeveOpening ?? base.sleeveOpening)].slice(0, 4),
+      backwait: fitSlots(d.backwait || [], BACK_WAIST_SLOTS),
+      sleeveLength: [...(d.sleeveLength ?? base.sleeveLength || ["", "", "", ""])].slice(0, 4),
+      sleeveOpening: [...(d.sleeveOpening ?? base.sleeveOpening || ["", "", "", ""])].slice(0, 4),
     };
   });
 
@@ -67,19 +75,19 @@ export function MeasurementForm({
   };
 
   const setField = (key: string, value: string) => {
-    setData((d) => ({ ...d, fields: { ...d.fields, [key]: value } }));
+    setData((d) => ({ ...d, fields: { ...(d.fields || {}), [key]: value } }));
   };
 
-  const balance = computeBalance(data.total, data.deposit);
+  const balance = computeBalance(data.total || "0", data.deposit || "0");
 
   const save = () => {
-    if (!data.name.trim()) {
+    if (!data.name || !data.name.trim()) {
       toast.error("Customer နာမည် ထည့်ပါ");
       return;
     }
     const next: TailorRecord = record
       ? { ...record, data }
-      : createRecord("measurement", data);
+      : createRecord("measurement", data as BaseMeasurementData);
     saveRecord(next);
     toast.success("သိမ်းဆည်းပြီးပါပြီ");
     onDone(next);
@@ -214,7 +222,7 @@ export function MeasurementForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <SignaturePad
             label="Designer လက်မှတ်"
-            value={data.designerSig}
+            value={data.designerSig || ""}
             onChange={(v) => setData({ ...data, designerSig: v })}
             mode={data.designerSigMode ?? "draw"}
             onModeChange={(m) => setData({ ...data, designerSigMode: m })}
@@ -224,7 +232,7 @@ export function MeasurementForm({
           />
           <SignaturePad
             label="Customer လက်မှတ်"
-            value={data.customerSig}
+            value={data.customerSig || ""}
             onChange={(v) => setData({ ...data, customerSig: v })}
             mode={data.customerSigMode ?? "draw"}
             onModeChange={(m) => setData({ ...data, customerSigMode: m })}
