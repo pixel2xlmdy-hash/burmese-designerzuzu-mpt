@@ -15,7 +15,6 @@ import {
   emptyMeasurementToDay,
   formatAmount,
   codeMY,
-  type MeasurementData,
   type TailorRecord,
 } from "@/lib/tailor";
 import { DateField } from "./DateField";
@@ -42,10 +41,10 @@ export function MeasurementForm({
   record: TailorRecord | null;
   onDone: (saved: TailorRecord | null) => void;
 }) {
-  const [data, setData] = useState<MeasurementData>(() => {
+  const [data, setData] = useState<any>(() => {
     const base = emptyMeasurementToDay(new Date());
     if (!record || !record.data) return base;
-    const d = record.data as Record<string, any>;
+    const d = record.data as any;
     return {
       ...base,
       ...d,
@@ -53,18 +52,18 @@ export function MeasurementForm({
       backwait: fitSlots(d.backwait || [], BACK_WAIST_SLOTS),
       sleeveLength: [...(d.sleeveLength ?? base.sleeveLength || ["", "", "", ""])].slice(0, 4),
       sleeveOpening: [...(d.sleeveOpening ?? base.sleeveOpening || ["", "", "", ""])].slice(0, 4),
-    } as MeasurementData;
+    };
   });
 
-  const [elbowNote, setElbowNote] = useState<string>((record?.data as any)?.elbowNote || "");
-  const [designerSigMode, setDesignerSigMode] = useState<"draw" | "text">((record?.data as any)?.designerSigMode || "draw");
-  const [designerSigText, setDesignerSigText] = useState<string>((record?.data as any)?.designerSigText || "");
-  const [customerSigMode, setCustomerSigMode] = useState<"draw" | "text">((record?.data as any)?.customerSigMode || "draw");
-  const [customerSigText, setCustomerSigText] = useState<string>((record?.data as any)?.customerSigText || "");
+  const [elbowNote, setElbowNote] = useState<string>(record?.data?.elbowNote || "");
+  const [designerSigMode, setDesignerSigMode] = useState<any>(record?.data?.designerSigMode || "draw");
+  const [designerSigText, setDesignerSigText] = useState<string>(record?.data?.designerSigText || "");
+  const [customerSigMode, setCustomerSigMode] = useState<any>(record?.data?.customerSigMode || "draw");
+  const [customerSigText, setCustomerSigText] = useState<string>(record?.data?.customerSigText || "");
 
-  const setSlot = (key: "backwait" | "sleeveLength" | "sleeveOpening", index: number, value: string) => {
-    setData((d) => {
-      const targetArr = (d[key] as string[]) || ["", "", "", ""];
+  const setSlot = (key: string, index: number, value: string) => {
+    setData((d: any) => {
+      const targetArr = d[key] || ["", "", "", ""];
       const next = [...targetArr];
       next[index] = value;
       return { ...d, [key]: next };
@@ -72,7 +71,7 @@ export function MeasurementForm({
   };
 
   const setField = (key: string, value: string) => {
-    setData((d) => ({ ...d, fields: { ...(d.fields || {}), [key]: value } }));
+    setData((d: any) => ({ ...d, fields: { ...(d.fields || {}), [key]: value } }));
   };
 
   const balance = computeBalance(data.total || "0", data.deposit || "0");
@@ -98,11 +97,11 @@ export function MeasurementForm({
     onDone(next);
   };
 
-  const slotRow = (key: "backwait" | "sleeveLength" | "sleeveOpening", label: string) => (
+  const slotRow = (key: string, label: string) => (
     <div className="space-y-1.5">
       <label className="text-xs text-muted-foreground">{label}</label>
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(4, minmax(0, 1fr))` }}>
-        {((data[key] as string[]) || ["", "", "", ""]).map((v, i) => (
+        {(data[key] || ["", "", "", ""]).map((v: string, i: number) => (
           <Input
             key={i}
             aria-label={`${label} ${i + 1}`}
@@ -155,7 +154,7 @@ export function MeasurementForm({
       <Section title="ကိုယ်ထည် (Body Measurements)">
         <p className="text-xs text-muted-foreground">36, 38, 34 / 36, 32 ^ 2, % စသည်ဖြင့် ထည့်နိုင်သည်</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
-          {BODY_FIELDS.map((f) => {
+          {BODY_FIELDS.map((f: any) => {
             if (f.key === "elbow") {
               return (
                 <div key={f.key} className="col-span-2 space-y-1.5 sm:col-span-3">
