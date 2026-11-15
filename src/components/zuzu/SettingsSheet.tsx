@@ -822,7 +822,7 @@ export function SettingsSheet({
       <label className="block text-xs font-semibold text-muted-foreground mb-1">ဆိုင်လိပ်စာ (Address)</label>
       <input 
         type="text"
-        defaultValue={localStorage.getItem('mpt_shop_address') || "ရန်ကုန်မြို့"}
+        defaultValue={localStorage.getItem('mpt_shop_address') || "မန္တလေးမြို့"}
         onChange={(e) => localStorage.setItem('mpt_shop_address', e.target.value)}
         className="w-full p-2 border rounded-lg bg-background text-foreground text-xs"
       />
