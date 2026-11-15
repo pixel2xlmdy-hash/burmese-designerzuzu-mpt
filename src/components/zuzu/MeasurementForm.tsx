@@ -51,7 +51,7 @@ export function MeasurementForm({
       ...base,
       ...d,
       fields: { ...(base.fields || {}), ...(d.fields || {}) },
-      backWait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
+      backwait: fitSlots(d.backwait, BACK_WAIST_SLOTS),
       sleeveLength: [...(d.sleeveLength ?? []), ...base.sleeveLength].slice(0, 4),
       sleeveOpening: [...(d.sleeveOpening ?? []), ...base.sleeveOpening].slice(0, 4),
     };
