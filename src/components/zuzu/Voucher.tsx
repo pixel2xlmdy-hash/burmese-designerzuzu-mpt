@@ -44,13 +44,9 @@ function Slots({ label, values, numbered }: { label: string; values: string[]; n
     </div>
   );
 }
-export const DEFAULT_VOUCHER_CONTACT = typeof window !== 'undefined' 
-  ? `📞 ဖုန်း: ${localStorage.getItem('mpt_shop_phone') || "09-XXXXXXXXX"} | 📍 ${localStorage.getItem('mpt_shop_address') || "ရန်ကုန်မြို့"}`
-  : "📞 ဖုန်း: 09-XXXXXXXXX | 📍 မန္တလေးမြို့";
 
-export const DEFAULT_VOUCHER_FOOTER = typeof window !== 'undefined'
-  ? localStorage.getItem('mpt_shop_footer') || "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။\n✨ မိမိတို့၏ အထည်အဆင်များကို ယုံကြည်စိတ်ချစွာ အပ်နှံနိုင်ပါသည်ရှင် 🙏 ကျေးဇူးတင်ပါသည်"
-  : "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။\n✨ မိမိတို့၏ အထည်အဆင်များကို ယုံကြည်စိတ်ချစွာ အပ်နှံနိုင်ပါသည်ရှင် 🙏 ကျေးဇူးတင်ပါသည်";
+export const DEFAULT_VOUCHER_CONTACT = `📞 ${PHONE_1}\n📞 ${PHONE_2}`;
+export const DEFAULT_VOUCHER_FOOTER = "👗 ပွဲတက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များ လက်ခံပါသည်။";
 
 const isBurmese = (t: string) => /[\u1000-\u109F]/.test(t);
 
@@ -230,37 +226,8 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
             );
           })}
         </div>
-          {/* One-Click Share Buttons (Viber & Telegram) - Print ထုတ်လျှင် မပါပါ */}
-  <div className="flex gap-2 justify-center my-4 print:hidden">
-    <button 
-      type="button"
-      onClick={() => {
-        const shareText = `👗 ${shopName}\n-------------------\n👤 ဖောက်သည်: ${data.name || '-'}\n📞 ဖုန်း: ${data.phone || '-'}\n💰 ကျသင့်ငွေ: ${formatAmount(parseAmount(data.total))} ကျပ်\n-------------------\n${shopFooter}`;
-        window.open(`viber://forward?text=${encodeURIComponent(shareText)}`, '_blank');
-      }}
-      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow transition-all"
-    >
-      📤 Viber သို့ ပို့မည်
-    </button>
-    <button 
-      type="button"
-      onClick={() => {
-        const shareText = `👗 ${shopName}\n-------------------\n👤 ဖောက်သည်: ${data.name || '-'}\n📞 ဖုန်း: ${data.phone || '-'}\n💰 ကျသင့်ငွေ: ${formatAmount(parseAmount(data.total))} ကျပ်\n-------------------\n${shopFooter}`;
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`, '_blank');
-      }}
-      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow transition-all"
-    >
-      📤 Telegram သို့ ပို့မည်
-    </button>
-  </div>
 
-{/* Dynamic Voucher Footer Section */}
-<div className="mt-6 pt-3 border-t border-amber-300 text-center text-xs text-gray-700">
-  <p className="font-bold text-amber-900">{shopName}</p>
-  <p className="mt-1">{shopPhone} | {shopAddress}</p>
-  <p className="mt-2 font-medium italic text-amber-800 whitespace-pre-line">{shopFooter}</p>
-</div>
-
+        <div className="mt-2.5 whitespace-pre-line text-center text-[10.5px] text-muted-foreground">{footer}</div>
       </div>
     </div>
   );
