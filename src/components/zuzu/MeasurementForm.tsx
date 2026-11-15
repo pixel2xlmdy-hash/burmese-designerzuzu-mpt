@@ -226,8 +226,9 @@ export function MeasurementForm({
           />
         </div>
       </Section>
-  <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl gap-2 px-4 py-3">
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl gap-2 px-4">
           <Button variant="soft" size="xl" className="flex-1" onClick={() => onDone(null)}>
             မလုပ်တော့ပါ
           </Button>
