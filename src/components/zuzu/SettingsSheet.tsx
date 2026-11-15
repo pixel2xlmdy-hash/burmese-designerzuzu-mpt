@@ -744,8 +744,6 @@ export function SettingsSheet({
               {screen === "code" && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-
-                    
                     <Label htmlFor="sync-email">Shop Gmail / Email Address</Label>
                     <Input
                       id="sync-email"
@@ -796,49 +794,6 @@ export function SettingsSheet({
             </div>
           )}
         </section>
-        {/* Shop Profile Settings Section */}
-<section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-  <h3 className="font-display text-base font-bold text-primary">🛠️ ဆိုင်ပရိုဖိုင်နှင့် ဘောက်ချာပြင်ဆင်ရန် (Shop Profile)</h3>
-  <div className="space-y-3 text-sm">
-    <div>
-      <label className="block text-xs font-semibold text-muted-foreground mb-1">ဆိုင်အမည် (Shop Name)</label>
-      <input 
-        type="text"
-        defaultValue={localStorage.getItem('mpt_shop_name') || "မြောက်ပြင်သူ (Designer Zu Zu)"}
-        onChange={(e) => localStorage.setItem('mpt_shop_name', e.target.value)}
-        className="w-full p-2 border rounded-lg bg-background text-foreground text-xs"
-      />
-    </div>
-    <div>
-      <label className="block text-xs font-semibold text-muted-foreground mb-1">ဖုန်းနံပါတ် (Phone Number)</label>
-      <input 
-        type="text"
-        defaultValue={localStorage.getItem('mpt_shop_phone') || "09-XXXXXXXXX"}
-        onChange={(e) => localStorage.setItem('mpt_shop_phone', e.target.value)}
-        className="w-full p-2 border rounded-lg bg-background text-foreground text-xs"
-      />
-    </div>
-    <div>
-      <label className="block text-xs font-semibold text-muted-foreground mb-1">ဆိုင်လိပ်စာ (Address)</label>
-      <input 
-        type="text"
-        defaultValue={localStorage.getItem('mpt_shop_address') || "မန္တလေးမြို့"}
-        onChange={(e) => localStorage.setItem('mpt_shop_address', e.target.value)}
-        className="w-full p-2 border rounded-lg bg-background text-foreground text-xs"
-      />
-    </div>
-    <div>
-      <label className="block text-xs font-semibold text-muted-foreground mb-1">ဘောက်ချာအောက်ခြေ မေတ္တာစာစကား (Footer Message)</label>
-      <textarea 
-        rows={2}
-        defaultValue={localStorage.getItem('mpt_shop_footer') || "👗 ပုံစံက်၊ ရိုးရာ၊ မင်္ဂလာဝတ်စုံ အပ်ထည်များကို လက်ခံပါသည်။"}
-        onChange={(e) => localStorage.setItem('mpt_shop_footer', e.target.value)}
-        className="w-full p-2 border rounded-lg bg-background text-foreground text-xs"
-      />
-    </div>
-  </div>
-</section>
-
 
         <section className="mt-4 space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <h3 className="font-display text-base font-bold text-primary">Data Backup</h3>
