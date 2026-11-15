@@ -15,14 +15,14 @@ import {
   emptyMeasurementToDay,
   formatAmount,
   codeMY,
-  type MeasurementData as BaseMeasurementData,
+  type MeasurementData,
   type TailorRecord,
 } from "@/lib/tailor";
 import { DateField } from "./DateField";
 import { SignaturePad } from "./SignaturePad";
 
-// Extended interface to prevent missing property errors in TS
-interface ExtendedMeasurementData extends BaseMeasurementData {
+// Extended interface for local form state safety
+interface ExtendedMeasurementData extends MeasurementData {
   elbowNote?: string;
   designerSigMode?: "draw" | "text";
   designerSigText?: string;
@@ -86,8 +86,8 @@ export function MeasurementForm({
       return;
     }
     const next: TailorRecord = record
-      ? { ...record, data }
-      : createRecord("measurement", data as BaseMeasurementData);
+      ? { ...record, data: data as MeasurementData }
+      : createRecord("measurement", data as MeasurementData);
     saveRecord(next);
     toast.success("သိမ်းဆည်းပြီးပါပြီ");
     onDone(next);
