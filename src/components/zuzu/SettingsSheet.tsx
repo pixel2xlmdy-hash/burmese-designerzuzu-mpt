@@ -46,12 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import { downloadJson, todayForFile } from "@/lib/download";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getShopBrandProfile,
-  saveShopBrandProfile,
-  DEFAULT_BRAND_PROFILE,
-  type ShopBrandProfile,
-} from "@/lib/shopBrand";
+
 function errorText(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/otp_locked/i.test(msg)) return "Code အကြိမ်များစွာ မှားယွင်းသဖြင့် ခဏစောင့်ပြီးမှ ထပ်ကြိုးစားပါ";
@@ -101,33 +96,15 @@ export function SettingsSheet({
   const [lockLeft, setLockLeft] = useState(0);
 
   const [showSetPw, setShowSetPw] = useState(false);
- const title = brand.shopName?.trim() || v.title?.trim() || BRAND_TITLE;
+  const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
-  const contact = brand.phone?.trim() ? "Tel: " + brand.phone.trim() : v.contact?.trim() || DEFAULT_VOUCHER_CONTACT;
+  const [confirmNewPw, setConfirmNewPw] = useState("");
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
 
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const singleRef = useRef<HTMLInputElement>(null);
-  const [brandProfile, setBrandProfile] = useState<ShopBrandProfile>(() =>
-  getShopBrandProfile()
-);
-
-const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (typeof reader.result === "string") {
-      setBrandProfile((prev) => ({ ...prev, logoUrl: reader.result as string }));
-    }
-  };
-  reader.readAsDataURL(file);
-};
-
-const handleSaveBrand = () => {
-  saveShopBrandProfile(brandProfile);
-  toast.success("ဆိုင် Profile အချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ");
-};
 
   const liveCount = Object.values(store.records).filter((r) => !r.deleted).length;
 
@@ -457,88 +434,6 @@ const handleSaveBrand = () => {
                   </div>
                 </div>
               </div>
-              <div className="space-y-3 rounded-lg border p-4 bg-card text-card-foreground">
-  <h3 className="font-semibold text-sm">Profile Settings & Custom Branding</h3>
-
-  <div className="space-y-1">
-    <Label>ဆိုင်နာမည် (Shop Name)</Label>
-    <Input
-      value={brandProfile.shopName}
-      onChange={(e) => setBrandProfile({ ...brandProfile, shopName: e.target.value })}
-      placeholder="MPT FIT TAILOR PRO"
-    />
-  </div>
-
-  <div className="space-y-1">
-    <Label>Logo ပုံတင်ရန် သို့မဟုတ် Link ထည့်ရန်</Label>
-    <Input type="file" accept="image/*" onChange={handleLogoUpload} />
-    <Input
-      value={brandProfile.logoUrl}
-      onChange={(e) => setBrandProfile({ ...brandProfile, logoUrl: e.target.value })}
-      placeholder="https://... (သို့မဟုတ် အပေါ်မှ ပုံရွေးပါ)"
-    />
-    {brandProfile.logoUrl && (
-      <img
-        src={brandProfile.logoUrl}
-        alt="Shop Logo"
-        className="h-12 w-12 rounded object-cover border mt-1"
-      />
-    )}
-  </div>
-
-  <div className="space-y-1">
-    <Label>Designer Name</Label>
-    <Input
-      value={brandProfile.designerName}
-      onChange={(e) => setBrandProfile({ ...brandProfile, designerName: e.target.value })}
-      placeholder="Designer Zu Zu"
-    />
-  </div>
-
-  <div className="space-y-1">
-    <Label>ဖုန်းနံပါတ် (Phone Number)</Label>
-    <Input
-      value={brandProfile.phone}
-      onChange={(e) => setBrandProfile({ ...brandProfile, phone: e.target.value })}
-      placeholder="09xxxxxxxxx"
-    />
-  </div>
-
-  <div className="space-y-1">
-    <Label>လိပ်စာ (Address)</Label>
-    <Input
-      value={brandProfile.address}
-      onChange={(e) => setBrandProfile({ ...brandProfile, address: e.target.value })}
-      placeholder="ဆိုင်လိပ်စာ ထည့်သွင်းပါ"
-    />
-  </div>
-
-  <div className="space-y-1">
-    <Label>မေတ္တာစကား (Thank You Message)</Label>
-    <Input
-      value={brandProfile.thankYouMessage}
-      onChange={(e) => setBrandProfile({ ...brandProfile, thankYouMessage: e.target.value })}
-      placeholder="အားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။"
-    />
-  </div>
-
-  <div className="flex gap-2 pt-1">
-    <Button type="button" onClick={handleSaveBrand} className="flex-1">
-      Brand Profile သိမ်းမည်
-    </Button>
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => {
-        setBrandProfile(DEFAULT_BRAND_PROFILE);
-        saveShopBrandProfile(DEFAULT_BRAND_PROFILE);
-        toast.success("မူလအတိုင်း ပြန်ထားပြီးပါပြီ");
-      }}
-    >
-      Reset
-    </Button>
-  </div>
-</div>
               <dl className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
                   <dt>Status</dt>
