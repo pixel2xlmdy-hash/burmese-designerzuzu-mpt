@@ -101,9 +101,11 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
 ) {
   const balance = computeBalance(data.total, data.deposit);
   const v = data.voucher ?? {};
- const title = brand.shopName || v.title?.trim() || BRAND_TITLE;
+const title = brand.shopName?.trim() || v.title?.trim() || BRAND_TITLE;
   const customTitle = !!v.title?.trim() && v.title.trim() !== BRAND_TITLE;
- const contact = brand.phone ? `📞 ${brand.phone}` : (v.contact?.trim() || DEFAULT_VOUCHER_CONTACT);
+const contact = brand.phone?.trim()
+  ? "📞 " + brand.phone.trim()
+  : (v.contact?.trim() || DEFAULT_VOUCHER_CONTACT);
   const footer = v.footer?.trim() || DEFAULT_VOUCHER_FOOTER;
   const brand = getShopBrandProfile();
   return (
