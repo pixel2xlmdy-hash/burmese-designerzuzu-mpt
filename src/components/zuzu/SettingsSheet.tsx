@@ -101,11 +101,9 @@ export function SettingsSheet({
   const [lockLeft, setLockLeft] = useState(0);
 
   const [showSetPw, setShowSetPw] = useState(false);
-  const [oldPw, setOldPw] = useState("");
+ const title = brand.shopName?.trim() || v.title?.trim() || BRAND_TITLE;
   const [newPw, setNewPw] = useState("");
-  const [confirmNewPw, setConfirmNewPw] = useState("");
-  const [showOldPw, setShowOldPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
+  const contact = brand.phone?.trim() ? "Tel: " + brand.phone.trim() : v.contact?.trim() || DEFAULT_VOUCHER_CONTACT;
 
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
