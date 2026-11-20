@@ -11,7 +11,7 @@ import {
   type MeasurementData,
 } from "@/lib/tailor";
 import { Logo } from "./Logo";
-
+import { getShopBrandProfile } from "@/lib/shopBrand";
 function Cell({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="flex items-baseline justify-between gap-2 border-b border-dotted border-border py-[3px]">
@@ -101,10 +101,11 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
 ) {
   const balance = computeBalance(data.total, data.deposit);
   const v = data.voucher ?? {};
-  const title = v.title?.trim() || BRAND_TITLE;
+ const title = brand.shopName || v.title?.trim() || BRAND_TITLE;
   const customTitle = !!v.title?.trim() && v.title.trim() !== BRAND_TITLE;
-  const contact = v.contact?.trim() || DEFAULT_VOUCHER_CONTACT;
+ const contact = brand.phone ? `📞 ${brand.phone}` : (v.contact?.trim() || DEFAULT_VOUCHER_CONTACT);
   const footer = v.footer?.trim() || DEFAULT_VOUCHER_FOOTER;
+  const brand = getShopBrandProfile();
   return (
     <div
       ref={ref}
@@ -114,7 +115,7 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
       <div className="rounded-xl border-2 border-gold/70 p-4">
         {/* Header */}
         <div className="flex items-center gap-3 border-b-2 border-primary/80 pb-3">
-          <VoucherLogo src={v.logo?.trim() ?? ""} />
+         <VoucherLogo src={brand.logoUrl || v.logo?.trim() || ""} />
           <div className="flex-1">
             <div className="font-display text-[26px] font-bold leading-tight text-primary">{title}</div>
             {!customTitle && (
@@ -124,6 +125,9 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
           <div className="text-right text-[11.5px] leading-relaxed text-muted-foreground">
             <div className="whitespace-pre-line">{contact}</div>
             <div className="mt-0.5 font-semibold text-primary">ကိုယ်တိုင်း မှတ်တမ်း</div>
+            {brand.designerName && (
+  <div className="text-[10px] text-muted-foreground">{brand.designerName}</div>
+)}
           </div>
         </div>
 
@@ -230,5 +234,12 @@ export const Voucher = forwardRef<HTMLDivElement, { data: MeasurementData }>(fun
         <div className="mt-2.5 whitespace-pre-line text-center text-[10.5px] text-muted-foreground">{footer}</div>
       </div>
     </div>
+    {(brand.address || brand.phone || brand.thankYouMessage) && (
+  <div className="mt-2 pt-1.5 border-t text-[11px] text-center space-y-0.5">
+    {brand.address && <div>လိပ်စာ - {brand.address}</div>}
+    {brand.phone && <div>ဖုန်း - {brand.phone}</div>}
+    {brand.thankYouMessage && <div>{brand.thankYouMessage}</div>}
+  </div>
+)}
   );
 });
