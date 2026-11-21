@@ -22,7 +22,6 @@ import { startStore, useStore } from "@/lib/store";
 import { filterRecords, type RecordKind } from "@/lib/tailor";
 import { AdBanner } from "@/components/zuzu/AdBanner";
 import { cn } from "@/lib/utils";
-import { FinanceDashboard } from "@/components/zuzu/FinanceDashboard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -244,8 +243,8 @@ function Index() {
               />
             ))
           )}
-  </main>
-    <FinanceDashboard />
+        </div>
+      </main>
     );
   }
 
