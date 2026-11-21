@@ -244,9 +244,10 @@ function Index() {
               />
             ))
           )}
-        </div>
-      </main>
-      <FinanceDashboard />
+      <>
+  </main>
+  <FinanceDashboard />
+</>
     );
   }
 
